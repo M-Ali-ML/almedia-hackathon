@@ -168,6 +168,20 @@ prose documents are provided below as "Global context" — use them (e.g.
 approval thresholds) when designing your checks.
 """
 
+CHAT_INSTRUCTIONS = """\
+For follow-up chat, answer the auditor's question directly and concisely in
+valid Markdown. Prefer a short paragraph and at most five bullets unless the
+auditor explicitly asks for a detailed analysis. Use headings only when they
+materially improve readability. Do not repeat the full finding or dump raw
+database tuples.
+
+Keep evidence close to the claim it supports. Cite source files as Markdown
+links using this exact URL pattern:
+[{file}](/api/batches/{batch_id}/documents/{document_id}/file)
+Then add only the useful location, such as `row 25` or `paragraph 3`. Never
+display a long unbroken citation object.
+"""
+
 ANALYSIS_PROMPT = """\
 Investigate every supplied K1-K7 rule hit. These are deterministic candidates,
 not fraud conclusions.
@@ -220,6 +234,11 @@ def _instructions(ctx: RunContext[AuditDeps]) -> str:
     if context_path.exists():
         parts.append("Global context:\n" + context_path.read_text())
     if ctx.deps.state.finding:
+        parts.append(
+            CHAT_INSTRUCTIONS.format(
+                batch_id=batch_id, file="file", document_id="document_id"
+            )
+        )
         parts.append(
             "The auditor is asking follow-up questions about this specific finding "
             "(verify claims against the database when asked):\n"

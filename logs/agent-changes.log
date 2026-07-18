@@ -41,3 +41,6 @@ Replaced model-selected likelihoods with deterministic evidence-strength scores 
 
 ## 2026-07-18 17:50 CEST
 Added a pre-analysis header action and readable overlay that separates cited company context, K1-K7 analysis readiness, and the source-linked ingested data inventory.
+
+## 2026-07-18 17:59 CEST
+Fixed chat presentation with Markdown rendering, safe wrapping for long evidence identifiers, and compact source-linked response instructions. Hardened chat request cancellation and SSE parsing to avoid stale or incomplete streamed messages.

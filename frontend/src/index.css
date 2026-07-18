@@ -9,3 +9,76 @@
 body {
   @apply bg-slate-50 text-slate-900 antialiased;
 }
+
+.chat-markdown {
+  line-height: 1.55;
+}
+
+.chat-markdown > :first-child {
+  margin-top: 0;
+}
+
+.chat-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown p,
+.chat-markdown ul,
+.chat-markdown ol,
+.chat-markdown blockquote,
+.chat-markdown pre {
+  margin: 0.65rem 0;
+}
+
+.chat-markdown ul,
+.chat-markdown ol {
+  padding-left: 1.25rem;
+}
+
+.chat-markdown ul {
+  list-style: disc;
+}
+
+.chat-markdown ol {
+  list-style: decimal;
+}
+
+.chat-markdown li + li {
+  margin-top: 0.25rem;
+}
+
+.chat-markdown blockquote {
+  border-left: 3px solid var(--color-slate-300);
+  padding-left: 0.75rem;
+  color: var(--color-slate-600);
+}
+
+.chat-markdown code {
+  border-radius: 0.25rem;
+  background: var(--color-slate-200);
+  padding: 0.1rem 0.3rem;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  white-space: break-spaces;
+}
+
+.chat-markdown pre {
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  background: var(--color-slate-900);
+  padding: 0.75rem;
+  color: white;
+}
+
+.chat-markdown pre code {
+  background: transparent;
+  padding: 0;
+  white-space: pre;
+}
+
+.chat-markdown a {
+  color: var(--color-blue-700);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

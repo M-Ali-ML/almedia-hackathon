@@ -31,6 +31,31 @@ export type ChatEvent =
   | { type: 'activity'; text: string }
   | { type: 'error'; message: string }
 
+function parseChatEventBlock(block: string): ChatEvent[] {
+  const events: ChatEvent[] = []
+  for (const line of block.split('\n')) {
+    if (!line.startsWith('data:')) continue
+    let event: Record<string, unknown>
+    try {
+      event = JSON.parse(line.slice(5).trim())
+    } catch {
+      continue
+    }
+    switch (event.type) {
+      case 'TEXT_MESSAGE_CONTENT':
+        events.push({ type: 'delta', text: String(event.delta ?? '') })
+        break
+      case 'TOOL_CALL_START':
+        events.push({ type: 'activity', text: `running ${String(event.toolCallName ?? 'tool')}…` })
+        break
+      case 'RUN_ERROR':
+        events.push({ type: 'error', message: String(event.message ?? 'agent error') })
+        break
+    }
+  }
+  return events
+}
+
 /**
  * Minimal AG-UI client: POSTs a RunAgentInput to the backend and yields
  * text deltas from the SSE stream. The finding and batch id travel as
@@ -69,29 +94,15 @@ export async function* streamChat(opts: {
     const { done, value } = await reader.read()
     if (done) break
     buffer += decoder.decode(value, { stream: true })
+    buffer = buffer.replaceAll('\r\n', '\n')
     const blocks = buffer.split('\n\n')
     buffer = blocks.pop() ?? ''
     for (const block of blocks) {
-      for (const line of block.split('\n')) {
-        if (!line.startsWith('data:')) continue
-        let event: Record<string, unknown>
-        try {
-          event = JSON.parse(line.slice(5).trim())
-        } catch {
-          continue
-        }
-        switch (event.type) {
-          case 'TEXT_MESSAGE_CONTENT':
-            yield { type: 'delta', text: String(event.delta ?? '') }
-            break
-          case 'TOOL_CALL_START':
-            yield { type: 'activity', text: `running ${String(event.toolCallName ?? 'tool')}…` }
-            break
-          case 'RUN_ERROR':
-            yield { type: 'error', message: String(event.message ?? 'agent error') }
-            break
-        }
-      }
+      for (const event of parseChatEventBlock(block)) yield event
     }
+  }
+  buffer += decoder.decode()
+  if (buffer.trim()) {
+    for (const event of parseChatEventBlock(buffer.replaceAll('\r\n', '\n'))) yield event
   }
 }
