@@ -9,16 +9,56 @@ const IMPACT_LABELS: Record<ImpactType, string> = {
   other: 'Other',
 }
 
-function LikelihoodChip({ value }: { value: number }) {
+function LikelihoodChip({ finding }: { finding: Finding }) {
+  const value = finding.likelihood
   const cls =
     value >= 70
       ? 'bg-red-100 text-red-700'
       : value >= 40
         ? 'bg-amber-100 text-amber-700'
         : 'bg-emerald-100 text-emerald-700'
+  const band = value >= 70 ? 'High confidence' : value >= 40 ? 'Moderate confidence' : 'Low confidence'
   return (
-    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${cls}`}>
-      {value}%
+    <span className="group relative inline-flex" tabIndex={0}>
+      <span
+        className={`inline-block cursor-help rounded-full px-2.5 py-0.5 text-xs font-semibold ${cls}`}
+        aria-label={`Likelihood ${value} percent`}
+      >
+        {value}%
+      </span>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 hidden w-72 -translate-x-1/2 rounded-xl bg-slate-950 p-3 text-left text-xs font-normal text-white shadow-xl group-hover:block group-focus:block"
+      >
+        <span className="flex items-center justify-between">
+          <span className="font-semibold">{band}</span>
+          <span className="text-slate-300">{value}/100</span>
+        </span>
+        <span className="mt-1.5 block text-slate-300">
+          Corroboration-driven confidence from the verifier pass — how strongly independent evidence
+          supports this finding.
+        </span>
+        <span className="mt-2 block border-t border-slate-700 pt-2">
+          <span className="flex justify-between gap-3">
+            <span className="text-slate-300">Independent verification</span>
+            <span className={finding.verified ? 'text-emerald-300' : 'text-slate-400'}>
+              {finding.verified ? '✓ Confirmed' : 'Not confirmed'}
+            </span>
+          </span>
+          <span className="mt-1 flex justify-between gap-3">
+            <span className="text-slate-300">Corroborating sources</span>
+            <span className="text-slate-100">{finding.source_count ?? 0}</span>
+          </span>
+        </span>
+        {finding.verification_note && (
+          <span className="mt-2 block border-t border-slate-700 pt-2 text-slate-300">
+            {finding.verification_note}
+          </span>
+        )}
+        <span className="mt-2 block border-t border-slate-700 pt-2 text-[10px] text-slate-400">
+          Reflects evidence corroboration, not a statistical probability of fraud.
+        </span>
+      </span>
     </span>
   )
 }
@@ -162,7 +202,7 @@ export function FindingsTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-xs font-semibold tracking-wide text-slate-500 uppercase">
@@ -216,7 +256,7 @@ export function FindingsTable({
                       : '—'}
                   </td>
                   <td className="px-4 py-3">
-                    <LikelihoodChip value={f.likelihood} />
+                    <LikelihoodChip finding={f} />
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-500">
                     {f.citations.length} source{f.citations.length === 1 ? '' : 's'}{' '}

@@ -83,3 +83,9 @@ Made finding descriptions expand with their citation rows and added an explicit 
 
 ## 2026-07-18 18:20 CEST (combined branch)
 Merged tony-branch into user-stories on the `combined` branch: kept the user-stories backend (generalizable checks/ library, verifier pass, eval harness, review/evidence/impact endpoints, gpt-5.6-sol) as the trunk and dropped the redundant detection/ K1–K7 module; layered in tony's frontend polish — AudiTrace branding/header, PreAnalysisOverlay (adapted to the checks/verifier data model), markdown chat, and the /documents/{id}/file source-file endpoint.
+## 2026-07-18 18:36 CEST
+Reworked the financial-impact rollup so headline figures cover all non-rejected findings (fixing the misleading all-zeros card when findings are pending) with a total-exposure hero, a confirmed-by-auditor subtotal, and a control-breach count; rejecting a finding now removes it from the totals.
+
+## 2026-07-18 18:36 CEST
+Added a hover/focus tooltip to the findings Likelihood chip explaining the corroboration-driven confidence (verified status, corroborating source count, verifier note); made the findings table wrapper overflow-visible so the tooltip isn't clipped.
+

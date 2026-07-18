@@ -158,23 +158,31 @@ def build_impact(batch_id: str) -> ImpactSummary:
         finally:
             con.close()
 
+    # "active" = everything the auditor has not rejected; "confirmed" = accepted
+    active = [f for f in findings if f.review_state != "rejected"]
     accepted = [f for f in findings if f.review_state == "accepted"]
-    overstatement = sum(
-        f.amount_eur or 0.0 for f in accepted if f.impact_type == "profit_overstatement"
-    )
-    cash = sum(f.amount_eur or 0.0 for f in accepted if f.impact_type == "cash_misappropriation")
-    control = sum(1 for f in accepted if f.impact_type == "control_breach")
+
+    def _overstatement(fs: list) -> float:
+        return sum(f.amount_eur or 0.0 for f in fs if f.impact_type == "profit_overstatement")
+
+    overstatement = _overstatement(active)
 
     summary = ImpactSummary(
         reported_profit_eur=reported,
         reported_profit_source=source,
+        total_exposure_eur=sum(f.amount_eur or 0.0 for f in active),
         profit_overstatement_eur=overstatement,
         corrected_profit_eur=(reported - overstatement) if reported is not None else None,
-        cash_misappropriation_eur=cash,
-        control_breach_count=control,
+        cash_misappropriation_eur=sum(
+            f.amount_eur or 0.0 for f in active if f.impact_type == "cash_misappropriation"
+        ),
+        control_breach_count=sum(1 for f in active if f.impact_type == "control_breach"),
+        confirmed_exposure_eur=sum(f.amount_eur or 0.0 for f in accepted),
+        confirmed_overstatement_eur=_overstatement(accepted),
+        finding_count=len(findings),
         accepted_count=len(accepted),
         pending_count=sum(1 for f in findings if f.review_state == "pending"),
-        total_flagged_eur=sum(f.amount_eur or 0.0 for f in findings),
+        rejected_count=sum(1 for f in findings if f.review_state == "rejected"),
         lines=[
             ImpactLine(
                 id=f.id,

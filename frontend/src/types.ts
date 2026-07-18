@@ -63,13 +63,17 @@ export interface ImpactLine {
 export interface ImpactSummary {
   reported_profit_eur?: number | null
   reported_profit_source?: Citation | null
+  total_exposure_eur: number
   profit_overstatement_eur: number
   corrected_profit_eur?: number | null
   cash_misappropriation_eur: number
   control_breach_count: number
+  confirmed_exposure_eur: number
+  confirmed_overstatement_eur: number
+  finding_count: number
   accepted_count: number
   pending_count: number
-  total_flagged_eur: number
+  rejected_count: number
   lines: ImpactLine[]
 }
 

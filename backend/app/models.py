@@ -247,15 +247,28 @@ class ImpactLine(BaseModel):
 
 
 class ImpactSummary(BaseModel):
-    """Reported vs. corrected profit rollup, driven by accepted findings."""
+    """Financial-impact rollup.
+
+    Headline figures cover every *active* finding (all findings except those the
+    auditor rejected), so the card is never misleadingly empty. The `confirmed_*`
+    figures cover only findings the auditor has explicitly accepted and grow as
+    the review progresses.
+    """
 
     reported_profit_eur: float | None = None
     reported_profit_source: Citation | None = None
+    # active = not rejected (pending + accepted)
+    total_exposure_eur: float = 0.0
     profit_overstatement_eur: float = 0.0
     corrected_profit_eur: float | None = None
     cash_misappropriation_eur: float = 0.0
     control_breach_count: int = 0
+    # confirmed = accepted only
+    confirmed_exposure_eur: float = 0.0
+    confirmed_overstatement_eur: float = 0.0
+    # review counts
+    finding_count: int = 0
     accepted_count: int = 0
     pending_count: int = 0
-    total_flagged_eur: float = 0.0
+    rejected_count: int = 0
     lines: list[ImpactLine] = Field(default_factory=list)
