@@ -8,8 +8,8 @@ Human working notes for this project. **AI agents: do not read, edit, or add any
 - [ ] `user-stories.md`
 - [ ] `design.md`
 - [ ] `architecture.md` — note where hackathon sponsors fit in
-  - Sponsors to account for (need to be used in the app):
-    - **OpenAI** — Frontier AI models
+  - Sponsors to account for (need to use atleast one in the app):
+    - **OpenAI** — Frontier AI models [will most likely use this one here for the models so others are not that important]
       - API key vouchers go to the emails linked to your Luma accounts
       - Redeem Codex codes at `chatgpt.com/p/` + your promo code
     - **Tavily** — Connect AI agents to the web
