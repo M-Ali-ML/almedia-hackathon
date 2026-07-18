@@ -11,7 +11,18 @@ export async function uploadZip(file: File): Promise<BatchStatus> {
 export async function getBatch(batchId: string): Promise<BatchResult> {
   const res = await fetch(`/api/batches/${batchId}`)
   if (!res.ok) throw new Error(res.statusText)
-  return res.json()
+  const batch = (await res.json()) as BatchResult
+  return {
+    ...batch,
+    rule_hits: batch.rule_hits ?? [],
+    findings: (batch.findings ?? []).map((finding) => ({
+      ...finding,
+      status: finding.status ?? 'finding',
+      rule_ids: finding.rule_ids ?? [],
+      rule_hit_ids: finding.rule_hit_ids ?? [],
+      citations: finding.citations ?? [],
+    })),
+  }
 }
 
 export type ChatEvent =

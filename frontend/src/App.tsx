@@ -99,7 +99,11 @@ export default function App() {
                 </p>
               </div>
             </div>
-            <FindingsTable findings={batch.findings} onChat={setChatFinding} />
+            <FindingsTable
+              batchId={batch.batch_id}
+              findings={batch.findings}
+              onChat={setChatFinding}
+            />
           </div>
         )}
       </main>

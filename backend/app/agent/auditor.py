@@ -179,10 +179,13 @@ hit. Merge related hits into one finding when they concern the same vendor,
 journal, transaction cluster, asset population, or accounting issue.
 
 Every finding must list the contributing rule_hit_ids and K1-K7 rule_ids. Give
-an audit-language description, likelihood 0-100, EUR impact when quantifiable,
-and exact citations for all factual claims. Empty findings are acceptable only
-when every rule hit has an evidence-based dismissal; do not return an empty
-investigation list when candidates were supplied.
+an audit-language description of at most two short sentences explaining why
+the pattern is suspicious, likelihood 0-100, EUR impact when quantifiable, and
+exact citations for all factual claims. Put evidence details in citations, not
+the description. Never create a finding whose conclusion is that no fraud was
+found. Empty findings are acceptable only when every rule hit has an
+evidence-based dismissal; do not return an empty investigation list when
+candidates were supplied.
 """
 
 

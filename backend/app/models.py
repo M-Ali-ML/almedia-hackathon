@@ -60,7 +60,9 @@ class DocumentInfo(BaseModel):
 class Finding(BaseModel):
     id: str = Field(description="Stable visible id, e.g. 'F-001'")
     title: str
-    description: str = Field(description="Free-text description of the suspected issue, audit language")
+    description: str = Field(
+        description="Short explanation of why the evidence indicates fraud risk"
+    )
     likelihood: int = Field(ge=0, le=100, description="0-100 confidence that this is a real issue")
     amount_eur: float | None = Field(default=None, description="Estimated financial impact if known")
     status: Literal["finding", "needs_review"] = "finding"
@@ -73,7 +75,10 @@ class AgentFinding(BaseModel):
     """Finding as produced by the agent (ids are assigned server-side)."""
 
     title: str
-    description: str
+    description: str = Field(
+        max_length=600,
+        description="At most two short sentences explaining why the evidence indicates fraud risk",
+    )
     likelihood: int = Field(ge=0, le=100)
     amount_eur: float | None = None
     status: Literal["finding", "needs_review"] = "finding"

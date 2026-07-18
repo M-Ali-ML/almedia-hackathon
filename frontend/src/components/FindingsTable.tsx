@@ -15,7 +15,7 @@ function LikelihoodChip({ value }: { value: number }) {
   )
 }
 
-function CitationRow({ citation }: { citation: Citation }) {
+function CitationRow({ citation, batchId }: { citation: Citation; batchId: string }) {
   const locator = [
     citation.table && `table ${citation.table}`,
     citation.rows?.length ? `rows ${citation.rows.join(', ')}` : null,
@@ -28,12 +28,19 @@ function CitationRow({ citation }: { citation: Citation }) {
   return (
     <li className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
       <div className="font-mono text-xs text-slate-700">
-        <span className="font-semibold text-slate-900">{citation.file}</span>
+        <a
+          href={`/api/batches/${encodeURIComponent(batchId)}/documents/${encodeURIComponent(citation.document_id)}/file`}
+          target="_blank"
+          rel="noreferrer"
+          className="font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900"
+        >
+          {citation.file.split('/').at(-1) ?? citation.file}
+        </a>
         {locator && <span className="text-slate-500"> — {locator}</span>}
         <span className="ml-1 text-slate-400">[{citation.document_id}]</span>
       </div>
       {citation.excerpt && (
-        <div className="mt-1.5 border-l-2 border-slate-300 pl-2 font-mono text-xs text-slate-600">
+        <div className="mt-1.5 line-clamp-3 border-l-2 border-slate-300 pl-2 font-mono text-xs text-slate-600">
           {citation.excerpt}
         </div>
       )}
@@ -42,9 +49,11 @@ function CitationRow({ citation }: { citation: Citation }) {
 }
 
 export function FindingsTable({
+  batchId,
   findings,
   onChat,
 }: {
+  batchId: string
   findings: Finding[]
   onChat: (f: Finding) => void
 }) {
@@ -87,7 +96,7 @@ export function FindingsTable({
                         Needs review
                       </span>
                     )}
-                    {f.rule_ids.map((rule) => (
+                    {(f.rule_ids ?? []).map((rule) => (
                       <span
                         key={rule}
                         className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-600"
@@ -96,7 +105,7 @@ export function FindingsTable({
                       </span>
                     ))}
                   </div>
-                  <div className={`mt-1 text-slate-600 ${expanded === f.id ? '' : 'line-clamp-2'}`}>
+                  <div className="mt-1 line-clamp-3 text-slate-600">
                     {f.description}
                   </div>
                 </td>
@@ -133,7 +142,7 @@ export function FindingsTable({
                     </p>
                     <ul className="space-y-2">
                       {f.citations.map((c, i) => (
-                        <CitationRow key={i} citation={c} />
+                        <CitationRow key={i} citation={c} batchId={batchId} />
                       ))}
                     </ul>
                   </td>

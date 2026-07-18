@@ -29,3 +29,9 @@ Made pipeline process stages log as explicit PROCESS lines and streamed LLM agen
 
 ## 2026-07-18 17:22 CEST
 Added a data-driven K1–K7 detection stage with cited rule hits, mandatory agent dispositions, high-confidence fallback findings, exact citation checks, restricted SQL, and minimal rule/status UI indicators so ingested dossiers produce actionable fraud candidates.
+
+## 2026-07-18 17:26 CEST
+Fixed the findings screen crash by normalizing missing detection fields in legacy batch responses and safely rendering findings without `rule_ids`.
+
+## 2026-07-18 17:34 CEST
+Shortened new agent finding descriptions, clamped legacy narratives in the findings table, and added clickable citation links that open the original uploaded source files.
