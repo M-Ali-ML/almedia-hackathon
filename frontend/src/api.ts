@@ -1,4 +1,13 @@
-import type { BatchResult, BatchStatus, ChatMessage, Finding } from './types'
+import type {
+  BatchResult,
+  BatchStatus,
+  ChatMessage,
+  Citation,
+  Evidence,
+  Finding,
+  ImpactSummary,
+  ReviewState,
+} from './types'
 
 export async function uploadZip(file: File): Promise<BatchStatus> {
   const form = new FormData()
@@ -10,6 +19,38 @@ export async function uploadZip(file: File): Promise<BatchStatus> {
 
 export async function getBatch(batchId: string): Promise<BatchResult> {
   const res = await fetch(`/api/batches/${batchId}`)
+  if (!res.ok) throw new Error(res.statusText)
+  return res.json()
+}
+
+export async function reviewFinding(
+  batchId: string,
+  findingId: string,
+  review_state: ReviewState,
+  review_note?: string | null,
+): Promise<Finding> {
+  const res = await fetch(`/api/batches/${batchId}/findings/${findingId}/review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ review_state, review_note: review_note ?? null }),
+  })
+  if (!res.ok) throw new Error(res.statusText)
+  return res.json()
+}
+
+export async function getEvidence(batchId: string, citation: Citation): Promise<Evidence> {
+  const params = new URLSearchParams()
+  if (citation.document_id) params.set('document_id', citation.document_id)
+  if (citation.table) params.set('table', citation.table)
+  if (citation.rows?.length) params.set('rows', citation.rows.join(','))
+  if (citation.page != null) params.set('page', String(citation.page))
+  const res = await fetch(`/api/batches/${batchId}/evidence?${params.toString()}`)
+  if (!res.ok) throw new Error(res.statusText)
+  return res.json()
+}
+
+export async function getImpact(batchId: string): Promise<ImpactSummary> {
+  const res = await fetch(`/api/batches/${batchId}/impact`)
   if (!res.ok) throw new Error(res.statusText)
   return res.json()
 }

@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from pydantic_ai.ui import StateDeps  # noqa: E402
 from pydantic_ai.ui.ag_ui import AGUIAdapter  # noqa: E402
 
+from . import evidence as evidence_mod  # noqa: E402
 from . import storage  # noqa: E402
 from .agent import (  # noqa: E402
     AuditState,
@@ -27,7 +28,15 @@ from .agent import (  # noqa: E402
 )
 from .checks import run_checks_for_batch  # noqa: E402
 from .ingestion import ingest_zip  # noqa: E402
-from .models import BatchResult, BatchStatus, DocumentInfo  # noqa: E402
+from .models import (  # noqa: E402
+    BatchResult,
+    BatchStatus,
+    DocumentInfo,
+    Evidence,
+    Finding,
+    ImpactSummary,
+    ReviewUpdate,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -37,7 +46,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Vouch")
+app = FastAPI(title="AuditTrace")
 
 app.add_middleware(
     CORSMiddleware,
@@ -135,6 +144,40 @@ async def get_documents(batch_id: str) -> list[DocumentInfo]:
     if result is None:
         raise HTTPException(status_code=404, detail="Unknown batch")
     return result.documents
+
+
+@app.post("/api/batches/{batch_id}/findings/{finding_id}/review", response_model=Finding)
+async def review_finding(batch_id: str, finding_id: str, update: ReviewUpdate) -> Finding:
+    """Auditor accept / reject / annotate a finding (human-in-the-loop)."""
+    finding = storage.update_finding_review(
+        batch_id, finding_id, update.review_state, update.review_note
+    )
+    if finding is None:
+        raise HTTPException(status_code=404, detail="Unknown batch or finding")
+    return finding
+
+
+@app.get("/api/batches/{batch_id}/evidence", response_model=Evidence)
+async def get_evidence(
+    batch_id: str,
+    document_id: str | None = None,
+    table: str | None = None,
+    rows: str | None = None,
+    page: int | None = None,
+) -> Evidence:
+    """Server-rendered context behind a citation (table slice or prose passages)."""
+    row_ids = [int(r) for r in rows.split(",") if r.strip()] if rows else None
+    return evidence_mod.build_evidence(
+        batch_id, document_id=document_id, table=table, rows=row_ids, page=page
+    )
+
+
+@app.get("/api/batches/{batch_id}/impact", response_model=ImpactSummary)
+async def get_impact(batch_id: str) -> ImpactSummary:
+    """Reported vs. corrected profit rollup driven by accepted findings."""
+    if storage.load_status(batch_id) is None:
+        raise HTTPException(status_code=404, detail="Unknown batch")
+    return evidence_mod.build_impact(batch_id)
 
 
 @app.post("/api/chat")

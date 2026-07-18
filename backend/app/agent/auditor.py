@@ -222,8 +222,12 @@ Process — do NOT stop after a shallow browse:
 Then produce:
 - findings: real issues, each with a short title, an audit-language description
   of the evidence AND which innocent explanations you ruled out, a likelihood
-  0-100, the estimated EUR impact if quantifiable, and citations for every
-  factual claim. Order by evidence strength.
+  0-100, the estimated EUR impact if quantifiable, an impact_type classifying
+  how it hits the accounts (profit_overstatement e.g. capitalized repairs or a
+  missing accrual; cash_misappropriation e.g. paying a shell vendor for nothing;
+  control_breach e.g. a segregation-of-duties or threshold violation with no
+  direct misstatement; disclosure e.g. a related-party issue; or other), and
+  citations for every factual claim. Order by evidence strength.
 - ruled_out: every candidate you investigated and dismissed, with the concrete
   innocent explanation and (where relevant) the related check_id.
 
@@ -434,6 +438,7 @@ async def run_analysis(batch_id: str) -> tuple[list[Finding], list[RuledOut]]:
                 description=f.description,
                 likelihood=f.likelihood,
                 amount_eur=f.amount_eur,
+                impact_type=f.impact_type,
                 citations=f.citations,
             )
         )

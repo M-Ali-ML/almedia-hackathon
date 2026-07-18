@@ -48,3 +48,9 @@ Rebranded the app to Spur across the root README, FastAPI title, and frontend he
 ## 2026-07-18 17:52 CEST
 Renamed the app from Spur to Vouch across README, FastAPI title, and frontend branding.
 
+## 2026-07-18 17:56 CEST
+Phase 5 judging-day UX: added review (accept/reject/annotate), evidence-viewer, and financial-impact-rollup endpoints in backend (main.py, evidence.py, storage.update_finding_review), extended Finding with impact_type/review_state/review_note plus Evidence/ImpactSummary models, and had the analysis agent classify impact_type. Built matching frontend (EvidenceViewer, ImpactCard, RuledOutList, reworked FindingsTable, api + types) wired into App.
+
+## 2026-07-18 17:58 CEST
+Renamed the app from Vouch to AuditTrace across README, FastAPI title, and frontend branding.
+

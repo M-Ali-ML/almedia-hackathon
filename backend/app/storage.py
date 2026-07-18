@@ -77,3 +77,20 @@ def load_result_dict(batch_id: str) -> dict | None:
     if not path.exists():
         return None
     return json.loads(path.read_text())
+
+
+def update_finding_review(
+    batch_id: str, finding_id: str, review_state: str, review_note: str | None
+):
+    """Persist an auditor's accept/reject/annotate decision on one finding."""
+    result = load_result(batch_id)
+    if result is None:
+        return None
+    target = next((f for f in result.findings if f.id == finding_id), None)
+    if target is None:
+        return None
+    target.review_state = review_state  # type: ignore[assignment]
+    target.review_note = review_note
+    save_result(result)
+    logger.info("[%s] review %s -> %s", batch_id, finding_id, review_state)
+    return target

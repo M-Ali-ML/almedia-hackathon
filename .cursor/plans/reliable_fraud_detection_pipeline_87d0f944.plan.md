@@ -96,14 +96,16 @@ Recommendation: don't rip out pydantic-ai — make the analysis step a **pluggab
 - **Computed corroboration score**: replace the LLM's free likelihood guess with a count of *independent* supporting `document_id`s per finding (the briefing is explicit: F1-class = top marks only with 4 converging sources). Citation model already carries what's needed.
 - Eval harness gets a "verified findings" mode so the precision gain is measured, not assumed.
 
-## Phase 5 — Judging-day product (user stories 3, 4, 12)
+## Phase 5 — Judging-day product (user stories 3, 4, 12) — DONE
 
-Only after detection is reliable:
+Delivered:
 
-- **Accept / reject / annotate** per finding, persisted in the batch result (small FastAPI + React change, big "auditor in control" signal for Cortea).
-- **Evidence viewer**: click a citation → `GET /api/batches/{id}/evidence?...` returns the table slice around `_row_id` or the prose passage, rendered highlighted (the DataSnipper bar).
-- **Financial impact rollup**: reported profit (from the JA-Entwurf PDF already in `document_texts`) vs. corrected profit after accepted findings, as a header card.
-- Surface in the UI: check-library results, the ruled-out/decoy list, and per-finding corroboration source count.
+- **Accept / reject / annotate** per finding — `POST /api/batches/{id}/findings/{fid}/review`, persisted to `result.json` (`review_state`, `review_note`); optimistic accept/reject/note controls in `FindingsTable`.
+- **Evidence viewer** — `GET /api/batches/{id}/evidence?table&rows&document_id&page` returns the table slice around the cited `_row_id`s (±3 context rows, cited rows highlighted) or the prose passages (excerpt highlighted). Citations in the findings table are now clickable and open the `EvidenceViewer` modal (the DataSnipper bar).
+- **Financial impact rollup** — `GET /api/batches/{id}/impact` parses reported Jahresüberschuss from the JA-Entwurf PDF and computes corrected profit = reported − accepted `profit_overstatement`, plus cash-misappropriation total and control-breach count. Rendered as the `ImpactCard` header. Findings now carry an `impact_type` classified by the analysis agent.
+- **Ruled-out / decoy list** surfaced via the collapsible `RuledOutList`; per-finding verified badge + corroboration source count shown on each row.
+
+Note: the running dev backend (started before these changes, no `--reload`) must be restarted to serve the new endpoints. A live model run to populate `impact_type` was blocked by an environment connection error to the model host; endpoint + rollup logic verified via `TestClient`.
 
 ## Explicitly out of scope
 

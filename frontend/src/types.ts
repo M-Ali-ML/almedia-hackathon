@@ -11,16 +11,66 @@ export interface Citation {
   excerpt?: string | null
 }
 
+export type ImpactType =
+  | 'profit_overstatement'
+  | 'cash_misappropriation'
+  | 'control_breach'
+  | 'disclosure'
+  | 'other'
+
+export type ReviewState = 'pending' | 'accepted' | 'rejected'
+
 export interface Finding {
   id: string
   title: string
   description: string
   likelihood: number
   amount_eur?: number | null
+  impact_type?: ImpactType
   citations: Citation[]
   source_count?: number
   verified?: boolean
   verification_note?: string | null
+  review_state?: ReviewState
+  review_note?: string | null
+}
+
+export interface EvidenceRow {
+  row_id: number
+  cited: boolean
+  values: Record<string, string | null>
+}
+
+export interface Evidence {
+  kind: 'table' | 'prose' | 'not_found'
+  document_id?: string | null
+  file?: string | null
+  table?: string | null
+  columns: string[]
+  rows: EvidenceRow[]
+  passages: { ref: string; text: string }[]
+  detail?: string | null
+}
+
+export interface ImpactLine {
+  id: string
+  title: string
+  impact_type: ImpactType
+  amount_eur?: number | null
+  review_state: ReviewState
+}
+
+export interface ImpactSummary {
+  reported_profit_eur?: number | null
+  reported_profit_source?: Citation | null
+  profit_overstatement_eur: number
+  corrected_profit_eur?: number | null
+  cash_misappropriation_eur: number
+  control_breach_count: number
+  accepted_count: number
+  pending_count: number
+  total_flagged_eur: number
+  lines: ImpactLine[]
 }
 
 export interface RuledOut {

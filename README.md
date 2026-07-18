@@ -1,8 +1,8 @@
-# Vouch
+# AuditTrace
 
 Hackathon MVP: upload a messy German GDPdU dossier ZIP, get cited fraud findings an auditor can review and chat about.
 
-**Vouch** — every claim is backed by the exact row or passage.
+**AuditTrace** — every claim is backed by the exact row or passage.
 
 Built for the Cortea / DataSnipper-style brief — detect planted schemes (fake vendors, capitalized repairs, cut-off errors, threshold splitting), avoid decoys, and keep every claim tied to exact rows/passages.
 

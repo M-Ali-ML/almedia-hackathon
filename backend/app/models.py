@@ -49,12 +49,26 @@ class DocumentInfo(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+ImpactType = Literal[
+    "profit_overstatement",
+    "cash_misappropriation",
+    "control_breach",
+    "disclosure",
+    "other",
+]
+
+ReviewState = Literal["pending", "accepted", "rejected"]
+
+
 class Finding(BaseModel):
     id: str = Field(description="Stable visible id, e.g. 'F-001'")
     title: str
     description: str = Field(description="Free-text description of the suspected issue, audit language")
     likelihood: int = Field(ge=0, le=100, description="0-100 confidence, computed from corroboration + verifier")
     amount_eur: float | None = Field(default=None, description="Estimated financial impact if known")
+    impact_type: ImpactType = Field(
+        default="other", description="How the issue affects the accounts (drives the impact rollup)"
+    )
     citations: list[Citation] = Field(min_length=1)
     # --- populated by the verifier pass (Phase 4) ---
     source_count: int = Field(
@@ -64,6 +78,9 @@ class Finding(BaseModel):
     verification_note: str | None = Field(
         default=None, description="Second-pass verifier's audit note (why confirmed / caveats)"
     )
+    # --- human-in-the-loop review (Phase 5) ---
+    review_state: ReviewState = Field(default="pending")
+    review_note: str | None = Field(default=None)
 
 
 class AgentFinding(BaseModel):
@@ -73,6 +90,15 @@ class AgentFinding(BaseModel):
     description: str
     likelihood: int = Field(ge=0, le=100)
     amount_eur: float | None = None
+    impact_type: ImpactType = Field(
+        default="other",
+        description=(
+            "profit_overstatement (e.g. capitalized repairs, missing accrual), "
+            "cash_misappropriation (funds paid out for nothing), control_breach "
+            "(policy/SoD violation with no direct misstatement), disclosure "
+            "(related-party/disclosure issue), or other"
+        ),
+    )
     citations: list[Citation] = Field(min_length=1)
 
 
@@ -181,3 +207,55 @@ class BatchResult(BaseModel):
     global_context: GlobalContext | None = None
     findings: list[Finding] = Field(default_factory=list)
     ruled_out: list[RuledOut] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Review + evidence + impact (Phase 5 UX)
+# ---------------------------------------------------------------------------
+
+
+class ReviewUpdate(BaseModel):
+    review_state: ReviewState
+    review_note: str | None = None
+
+
+class EvidenceRow(BaseModel):
+    row_id: int
+    cited: bool
+    values: dict[str, str | None]
+
+
+class Evidence(BaseModel):
+    """Server-rendered context around a citation for the evidence viewer."""
+
+    kind: Literal["table", "prose", "not_found"]
+    document_id: str | None = None
+    file: str | None = None
+    table: str | None = None
+    columns: list[str] = Field(default_factory=list)
+    rows: list[EvidenceRow] = Field(default_factory=list)
+    passages: list[dict[str, str]] = Field(default_factory=list)
+    detail: str | None = None
+
+
+class ImpactLine(BaseModel):
+    id: str
+    title: str
+    impact_type: ImpactType
+    amount_eur: float | None
+    review_state: ReviewState
+
+
+class ImpactSummary(BaseModel):
+    """Reported vs. corrected profit rollup, driven by accepted findings."""
+
+    reported_profit_eur: float | None = None
+    reported_profit_source: Citation | None = None
+    profit_overstatement_eur: float = 0.0
+    corrected_profit_eur: float | None = None
+    cash_misappropriation_eur: float = 0.0
+    control_breach_count: int = 0
+    accepted_count: int = 0
+    pending_count: int = 0
+    total_flagged_eur: float = 0.0
+    lines: list[ImpactLine] = Field(default_factory=list)
