@@ -33,3 +33,6 @@ Built the Phase 0 eval harness: backend/eval/answer_key.yaml (machine-readable F
 ## 2026-07-18 17:20 CEST
 Built the Phase 1 deterministic check library (backend/app/checks/): 9 generalizable JET checks (new-vendor profile, missing goods receipt, creator=approver SoD, permission concentration, repair vocabulary in assets, cut-off unaccrued, threshold-split clusters, round amounts, off-hours stats) over a fuzzy table/column resolver, runnable via python -m app.checks and wired into the pipeline and eval harness with checks.json persisted per batch; also fixed scripts/smoke_test.py for the streaming agent API.
 
+## 2026-07-18 17:40 CEST
+Wired Phase 2 of the fraud pipeline: the analysis agent is now fed the deterministic check candidates and must report-or-rule-out each one (new ruled_out output + RuledOut model, checklist/"empty is a failure" prompt, list_checks/run_check tools, raised tool-round budget). Switched the default model to openai:gpt-5.6-sol with a configurable reasoning effort after gpt-5.1 stalled on a single turn. Live eval on the sample dossier now scores 4/4 schemes, 0 decoys, in ~188s (down from 0/4).
+

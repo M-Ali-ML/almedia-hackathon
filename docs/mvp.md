@@ -42,7 +42,7 @@ cd frontend && npm install && npm run dev   # http://localhost:5173
 cd backend && uv run python scripts/smoke_test.py
 ```
 
-Model is `openai:gpt-5.1` by default, overridable via `AUDITOR_MODEL` (any pydantic-ai model string).
+Model is `openai:gpt-5.6-sol` by default, overridable via `AUDITOR_MODEL` (any pydantic-ai model string). Reasoning effort (`AUDITOR_REASONING_EFFORT`, default `medium`) and the analysis tool-round budget (`AUDITOR_REQUEST_LIMIT`, default 40) are also configurable — `gpt-5.1` was prone to stalling on a single long reasoning turn, so a faster reasoning model with a capped effort is the default.
 
 ## Batch lifecycle & storage
 

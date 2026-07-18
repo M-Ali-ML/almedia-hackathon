@@ -40,14 +40,26 @@ from ..checks import CHECKS_BY_ID, load_check_report, run_one_check
 
 logger = logging.getLogger(__name__)
 
-MODEL = os.environ.get("AUDITOR_MODEL", "openai:gpt-5.1")
+MODEL = os.environ.get("AUDITOR_MODEL", "openai:gpt-5.6-sol")
+
+# Reasoning models can otherwise burn minutes on a single turn (gpt-5.1 stalled
+# on its first response with the full check-candidate prompt); cap the effort so
+# the run spends its time taking tool actions, not thinking in one shot.
+REASONING_EFFORT = os.environ.get("AUDITOR_REASONING_EFFORT", "medium")
 
 MAX_ROWS = 200
 MAX_CHARS = 40_000
 
 # The analysis must run many focused tool rounds (the shallow ~4-call run is the
 # failure mode we are fixing), so raise the request budget well above default.
-ANALYSIS_REQUEST_LIMIT = int(os.environ.get("AUDITOR_REQUEST_LIMIT", "60"))
+ANALYSIS_REQUEST_LIMIT = int(os.environ.get("AUDITOR_REQUEST_LIMIT", "40"))
+
+
+def _model_settings() -> dict[str, Any] | None:
+    """OpenAI reasoning-effort setting, applied only to gpt-5-class models."""
+    if REASONING_EFFORT and REASONING_EFFORT.lower() != "none" and "gpt-5" in MODEL:
+        return {"openai_reasoning_effort": REASONING_EFFORT}
+    return None
 
 
 def _snip(text: str, limit: int = 200) -> str:
@@ -359,6 +371,7 @@ def analysis_agent() -> Agent[AuditDeps, AnalysisReport]:
         output_type=AnalysisReport,
         instructions=_instructions,
         retries=3,
+        model_settings=_model_settings(),
     )
     _register_tools(agent)
 
@@ -396,6 +409,7 @@ def chat_agent() -> Agent[AuditDeps, str]:
         deps_type=AuditDeps,
         instructions=_instructions,
         retries=3,
+        model_settings=_model_settings(),
     )
     _register_tools(agent)
     return agent
@@ -450,6 +464,7 @@ def context_agent() -> Agent[None, GlobalContext]:
     return Agent(
         MODEL,
         output_type=GlobalContext,
+        model_settings=_model_settings(),
         instructions=(
             "You extract reusable background context from a company's audit dossier: "
             "company facts, stated policies (e.g. approval limits, materiality), important "

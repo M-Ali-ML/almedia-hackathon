@@ -10,7 +10,7 @@ todos:
     status: completed
   - id: prompt-depth
     content: "Phase 2: rebalance prompt (checklist, ruled_out output, 'empty is failure'), feed checks.json, add run_check tools, raise tool-call depth"
-    status: pending
+    status: completed
   - id: codex-engine
     content: "Phase 3: AnalysisEngine abstraction; CodexEngine via headless `codex exec` on a scratch workspace; benchmark both engines with the eval harness"
     status: pending
