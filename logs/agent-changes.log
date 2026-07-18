@@ -10,3 +10,8 @@ Un-ignored logs/agent-changes.log so the shared agent changelog is tracked in gi
 ## 2026-07-18 15:47 CEST
 Stopped ignoring logs in .gitignore so agent and other log files stay committed with the repo.
 
+## 2026-07-18 16:07 CEST
+Revised the fraud audit MVP plan to include broad mixed-format ingestion, cited global context, general deterministic audit tests, secure batch-scoped DuckDB access, and finding-scoped chat while removing sample-specific fraud guidance.
+
+## 2026-07-18 16:11 CEST
+Simplified the fraud audit plan back to a thin MVP focused on basic mixed-format ingestion, global context, cited finding rows, and finding-scoped chat, with extensive tests and production hardening deferred.
