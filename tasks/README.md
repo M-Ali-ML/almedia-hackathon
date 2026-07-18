@@ -40,3 +40,11 @@ Human working notes for this project. **AI agents: do not read, edit, or add any
 ## 6. Demo
 
 - [ ] Demo + optional slideshow
+
+
+
+
+
+# Links
+ - https://notebooklm.google.com/notebook/4241e5ed-243b-4948-a8b1-8134343c79b1
+ 
