@@ -103,16 +103,16 @@ export function ChatPanel({
 
   return (
     <aside className="fixed inset-y-0 right-0 z-20 flex w-full max-w-md min-w-0 flex-col overflow-hidden border-l border-slate-200 bg-white shadow-2xl">
-      <header className="flex items-start justify-between border-b border-slate-200 p-4">
+      <header className="flex items-start justify-between border-b border-white/10 bg-[#071323] p-4 text-white">
         <div className="min-w-0 pr-3">
-          <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
+          <p className="text-xs font-semibold tracking-wide text-cyan-300 uppercase">
             Chat · finding <span className="font-mono">{finding.id}</span>
           </p>
-          <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-900">{finding.title}</p>
+          <p className="mt-1 line-clamp-2 text-sm font-semibold text-white">{finding.title}</p>
         </div>
         <button
           onClick={onClose}
-          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
           aria-label="Close chat"
         >
           ✕
@@ -155,7 +155,7 @@ export function ChatPanel({
           <button
             onClick={send}
             disabled={busy || !input.trim()}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            className="rounded-lg bg-[#0b1f36] px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700 disabled:opacity-40"
           >
             {busy ? '…' : 'Send'}
           </button>

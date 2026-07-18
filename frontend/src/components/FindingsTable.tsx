@@ -105,16 +105,16 @@ export function FindingsTable({
 
   if (findings.length === 0) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-slate-500 shadow-sm">
+      <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center text-slate-500 shadow-sm">
         The agent reported no findings for this dossier.
       </div>
     )
   }
 
   return (
-    <div className="overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-visible rounded-3xl border border-slate-200 bg-white shadow-[0_16px_50px_-32px_rgba(15,23,42,0.35)]">
       <table className="w-full text-left text-sm">
-        <thead>
+        <thead className="bg-slate-50/80">
           <tr className="border-b border-slate-200 text-xs font-semibold tracking-wide text-slate-500 uppercase">
             <th className="px-4 py-3">ID</th>
             <th className="px-4 py-3">Finding</th>
@@ -128,7 +128,7 @@ export function FindingsTable({
           {findings.map((f) => (
             <Fragment key={f.id}>
               <tr
-                className="cursor-pointer border-b border-slate-100 align-top hover:bg-slate-50"
+                className="cursor-pointer border-b border-slate-100 align-top transition-colors hover:bg-cyan-50/30"
                 onClick={() => setExpanded(expanded === f.id ? null : f.id)}
               >
                 <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-900">{f.id}</td>
@@ -167,7 +167,7 @@ export function FindingsTable({
                 </td>
                 <td className="px-4 py-3">
                   <button
-                    className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700"
+                    className="rounded-lg bg-[#0b1f36] px-3 py-2 text-xs font-semibold whitespace-nowrap text-white shadow-sm transition hover:bg-cyan-700"
                     onClick={(e) => {
                       e.stopPropagation()
                       onChat(f)
