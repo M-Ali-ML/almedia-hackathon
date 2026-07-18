@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import type { Citation, Finding } from '../types'
 
 function LikelihoodChip({ value }: { value: number }) {
@@ -73,15 +73,29 @@ export function FindingsTable({
         </thead>
         <tbody>
           {findings.map((f) => (
-            <>
+            <Fragment key={f.id}>
               <tr
-                key={f.id}
                 className="cursor-pointer border-b border-slate-100 align-top hover:bg-slate-50"
                 onClick={() => setExpanded(expanded === f.id ? null : f.id)}
               >
                 <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-900">{f.id}</td>
                 <td className="max-w-xl px-4 py-3">
-                  <div className="font-semibold text-slate-900">{f.title}</div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-semibold text-slate-900">{f.title}</span>
+                    {f.status === 'needs_review' && (
+                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 uppercase">
+                        Needs review
+                      </span>
+                    )}
+                    {f.rule_ids.map((rule) => (
+                      <span
+                        key={rule}
+                        className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-600"
+                      >
+                        {rule}
+                      </span>
+                    ))}
+                  </div>
                   <div className={`mt-1 text-slate-600 ${expanded === f.id ? '' : 'line-clamp-2'}`}>
                     {f.description}
                   </div>
@@ -111,7 +125,7 @@ export function FindingsTable({
                 </td>
               </tr>
               {expanded === f.id && (
-                <tr key={`${f.id}-citations`} className="border-b border-slate-100 bg-slate-50/60">
+                <tr className="border-b border-slate-100 bg-slate-50/60">
                   <td />
                   <td colSpan={5} className="px-4 pt-1 pb-4">
                     <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
@@ -125,7 +139,7 @@ export function FindingsTable({
                   </td>
                 </tr>
               )}
-            </>
+            </Fragment>
           ))}
         </tbody>
       </table>

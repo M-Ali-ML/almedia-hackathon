@@ -18,9 +18,16 @@ from pydantic_ai.ui import StateDeps  # noqa: E402
 from pydantic_ai.ui.ag_ui import AGUIAdapter  # noqa: E402
 
 from . import storage  # noqa: E402
-from .agent import AuditState, build_global_context, chat_agent, run_analysis  # noqa: E402
+from .agent import (  # noqa: E402
+    AuditState,
+    build_global_context,
+    chat_agent,
+    fallback_findings,
+    run_analysis,
+)
+from .detection import run_detection, save_detection  # noqa: E402
 from .ingestion import ingest_zip  # noqa: E402
-from .models import BatchResult, BatchStatus, DocumentInfo  # noqa: E402
+from .models import BatchResult, BatchStatus, DocumentInfo, GlobalContext  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
@@ -64,11 +71,37 @@ async def _run_pipeline(batch_id: str) -> None:
         storage.save_status(batch_id, "building_context", detail)
         storage.save_result(result)
 
-        result.global_context = await build_global_context(batch_id)
-        storage.save_status(batch_id, "analyzing", detail)
+        try:
+            result.global_context = await build_global_context(batch_id)
+        except Exception as exc:  # noqa: BLE001 - deterministic checks can still run without LLM context
+            logger.exception("[%s] global context failed; continuing with document data: %s", batch_id, exc)
+            result.global_context = GlobalContext()
+            (work_dir / "global_context.json").write_text(result.global_context.model_dump_json(indent=2))
+        storage.save_status(batch_id, "detecting", "Running K1-K7 audit procedures")
         storage.save_result(result)
 
-        result.findings = await run_analysis(batch_id)
+        detection = await anyio.to_thread.run_sync(
+            run_detection, storage.db_path(batch_id), result.global_context
+        )
+        result.detection = detection.summary
+        result.rule_hits = detection.hits
+        save_detection(work_dir / "rule_hits.json", detection)
+        detection_detail = (
+            f"{len(detection.hits)} candidates from "
+            f"{len(detection.summary.executed)} executed checks"
+        )
+        logger.info("[%s] detection complete — %s", batch_id, detection_detail)
+        storage.save_status(batch_id, "analyzing", detection_detail)
+        storage.save_result(result)
+
+        try:
+            result.findings = await run_analysis(batch_id, detection.hits)
+        except Exception as exc:  # noqa: BLE001 - deterministic fallback keeps the batch useful
+            logger.exception("[%s] agent investigation failed; using rule-hit fallback: %s", batch_id, exc)
+            result.findings = fallback_findings(detection.hits)
+        if not result.findings and detection.hits:
+            logger.warning("[%s] agent returned no findings; preserving high-risk candidates", batch_id)
+            result.findings = fallback_findings(detection.hits)
         result.status = storage.save_status(
             batch_id, "done", f"{len(result.findings)} findings"
         )

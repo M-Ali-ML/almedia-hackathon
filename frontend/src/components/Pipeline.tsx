@@ -4,6 +4,7 @@ const STEPS: { stage: Stage; label: string }[] = [
   { stage: 'extracting', label: 'Extracting' },
   { stage: 'ingesting', label: 'Ingesting' },
   { stage: 'building_context', label: 'Pre-analyzing' },
+  { stage: 'detecting', label: 'Detecting' },
   { stage: 'analyzing', label: 'Analyzing' },
   { stage: 'done', label: 'Done' },
 ]

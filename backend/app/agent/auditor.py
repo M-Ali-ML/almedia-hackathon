@@ -14,11 +14,12 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from functools import cache
 from typing import Any
 
 import duckdb
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic_ai import Agent, AgentRunResultEvent, ModelRetry, RunContext
 from pydantic_ai.messages import (
     FunctionToolCallEvent,
@@ -33,7 +34,7 @@ from pydantic_ai.run import AgentRunResult
 from pydantic_ai.ui import StateDeps
 
 from ..ingestion import schema_overview
-from ..models import AnalysisReport, Finding, GlobalContext
+from ..models import AnalysisReport, Citation, Finding, GlobalContext, RuleHit
 from .. import storage
 
 logger = logging.getLogger(__name__)
@@ -108,6 +109,7 @@ class AuditState(BaseModel):
 
     batch_id: str = ""
     finding: dict[str, Any] | None = None
+    rule_hits: list[dict[str, Any]] = Field(default_factory=list)
 
 
 AuditDeps = StateDeps[AuditState]
@@ -167,22 +169,41 @@ approval thresholds) when designing your checks.
 """
 
 ANALYSIS_PROMPT = """\
-Analyze this dossier for indications of fraud or material misstatement.
+Investigate every supplied K1-K7 rule hit. These are deterministic candidates,
+not fraud conclusions.
 
-Work systematically: inspect the schema, profile key tables (vendors,
-customers, ledger postings, asset register, goods receipts, master-data
-changes, approval logs, permissions, next-period postings), then run targeted
-cross-document checks based on standard JET procedures and the company's own
-policies from the global context. Think about segregation of duties, timing
-around year-end, approval thresholds, master-data changes, and whether
-recorded transactions are backed by real goods/services.
+For every rule hit, verify its cited evidence, inspect relevant surrounding
+records, search for counter-evidence and innocent explanations, and return one
+explicit disposition: finding, dismissed, or needs_review. Do not omit a rule
+hit. Merge related hits into one finding when they concern the same vendor,
+journal, transaction cluster, asset population, or accounting issue.
 
-Return your findings: a short title, an audit-language description of what the
-evidence shows and which innocent explanations you ruled out, a likelihood
-score 0-100, the estimated EUR impact if quantifiable, and citations for every
-factual claim. Order findings by evidence strength. Do not include weak
-hunches without corroboration.
+Every finding must list the contributing rule_hit_ids and K1-K7 rule_ids. Give
+an audit-language description, likelihood 0-100, EUR impact when quantifiable,
+and exact citations for all factual claims. Empty findings are acceptable only
+when every rule hit has an evidence-based dismissal; do not return an empty
+investigation list when candidates were supplied.
 """
+
+
+_BLOCKED_SQL = re.compile(
+    r"\b(insert|update|delete|merge|create|alter|drop|truncate|copy|attach|detach|"
+    r"install|load|export|import|pragma|call|read_csv|read_json|read_parquet|read_text|"
+    r"csv_scan|parquet_scan|sqlite_scan|postgres_scan|glob|httpfs)\b",
+    re.IGNORECASE,
+)
+
+
+def _validate_read_only_sql(query: str) -> str:
+    stripped = query.strip()
+    if ";" in stripped.rstrip(";"):
+        raise ModelRetry("Only one SQL statement is allowed.")
+    stripped = stripped.rstrip(";").strip()
+    if not re.match(r"^(select|with)\b", stripped, re.IGNORECASE):
+        raise ModelRetry("Only SELECT or WITH queries are allowed.")
+    if _BLOCKED_SQL.search(stripped):
+        raise ModelRetry("The query uses a blocked statement or external-read function.")
+    return stripped
 
 
 def _instructions(ctx: RunContext[AuditDeps]) -> str:
@@ -201,6 +222,17 @@ def _instructions(ctx: RunContext[AuditDeps]) -> str:
             "(verify claims against the database when asked):\n"
             + json.dumps(ctx.deps.state.finding, ensure_ascii=False)
         )
+        rule_hit_ids = set(ctx.deps.state.finding.get("rule_hit_ids", []))
+        rule_hits_path = storage.batch_dir(batch_id) / "rule_hits.json"
+        if rule_hit_ids and rule_hits_path.exists():
+            payload = json.loads(rule_hits_path.read_text())
+            related = [h for h in payload.get("hits", []) if h.get("id") in rule_hit_ids]
+            parts.append("Underlying deterministic rule hits:\n" + json.dumps(related, ensure_ascii=False))
+    elif ctx.deps.state.rule_hits:
+        parts.append(
+            "Deterministic K1-K7 rule hits to investigate:\n"
+            + json.dumps(ctx.deps.state.rule_hits, ensure_ascii=False)
+        )
     return "\n\n".join(parts)
 
 
@@ -216,7 +248,7 @@ def _register_tools(agent: Agent) -> None:
         logger.info("[%s] tool run_sql: %s", batch_id, _snip(query))
         con = _connect(ctx)
         try:
-            cursor = con.execute(query)
+            cursor = con.execute(_validate_read_only_sql(query))
             payload = _rows_to_json(cursor)
             n_rows = len(json.loads(payload).get("rows", []))
             logger.info("[%s] tool run_sql → %d rows", batch_id, n_rows)
@@ -283,26 +315,40 @@ def analysis_agent() -> Agent[AuditDeps, AnalysisReport]:
 
     @agent.output_validator
     def _validate_citations(ctx: RunContext[AuditDeps], report: AnalysisReport) -> AnalysisReport:
-        """Reject findings citing tables that don't exist — cheap anti-hallucination net."""
+        """Require candidate dispositions and verify exact source locations."""
+        expected_hits = {str(h.get("id")) for h in ctx.deps.state.rule_hits if h.get("id")}
+        disposed_hits = {hit_id for item in report.investigations for hit_id in item.rule_hit_ids}
+        missing = expected_hits - disposed_hits
+        unknown = disposed_hits - expected_hits
+        if missing or unknown:
+            raise ModelRetry(
+                f"Investigation coverage is invalid. Missing rule hits: {sorted(missing)}; "
+                f"unknown rule hits: {sorted(unknown)}."
+            )
+        expected_rules = {str(h.get("rule_id")) for h in ctx.deps.state.rule_hits}
+        for finding in report.findings:
+            if expected_hits and not finding.rule_hit_ids:
+                raise ModelRetry("Every finding must list its contributing rule_hit_ids.")
+            if not set(finding.rule_hit_ids).issubset(expected_hits):
+                raise ModelRetry("A finding references an unknown rule_hit_id.")
+            if expected_rules and (
+                not finding.rule_ids or not set(finding.rule_ids).issubset(expected_rules)
+            ):
+                raise ModelRetry("Every finding must list valid contributing K1-K7 rule_ids.")
+
         path = storage.db_path(ctx.deps.state.batch_id)
         con = duckdb.connect(str(path), read_only=True)
         try:
-            tables = {
-                r[0]
-                for r in con.execute("SELECT table_name FROM information_schema.tables").fetchall()
-            }
+            problems = [
+                problem
+                for finding in report.findings
+                for citation in finding.citations
+                for problem in _citation_problems(con, citation)
+            ]
         finally:
             con.close()
-        bad = [
-            c.table
-            for f in report.findings
-            for c in f.citations
-            if c.table and c.table not in tables
-        ]
-        if bad:
-            raise ModelRetry(
-                f"Citations reference unknown tables: {sorted(set(bad))}. Fix the citations."
-            )
+        if problems:
+            raise ModelRetry("Invalid citations: " + "; ".join(problems[:10]))
         return report
 
     return agent
@@ -320,8 +366,10 @@ def chat_agent() -> Agent[AuditDeps, str]:
     return agent
 
 
-async def run_analysis(batch_id: str) -> list[Finding]:
-    deps = StateDeps(AuditState(batch_id=batch_id))
+async def run_analysis(batch_id: str, rule_hits: list[RuleHit]) -> list[Finding]:
+    deps = StateDeps(
+        AuditState(batch_id=batch_id, rule_hits=[h.model_dump(mode="json") for h in rule_hits])
+    )
     result = await _run_with_progress(
         analysis_agent(),
         ANALYSIS_PROMPT,
@@ -338,6 +386,9 @@ async def run_analysis(batch_id: str) -> list[Finding]:
                 description=f.description,
                 likelihood=f.likelihood,
                 amount_eur=f.amount_eur,
+                status=f.status,
+                rule_ids=f.rule_ids,
+                rule_hit_ids=f.rule_hit_ids,
                 citations=f.citations,
             )
         )
@@ -350,6 +401,91 @@ async def run_analysis(batch_id: str) -> list[Finding]:
             _snip(f.title, 80),
         )
     logger.info("[%s] fraud analysis complete — %d findings", batch_id, len(findings))
+    return findings
+
+
+def _citation_problems(con: duckdb.DuckDBPyConnection, citation: Citation) -> list[str]:
+    """Return human-readable provenance mismatches for one citation."""
+    problems: list[str] = []
+    if citation.table and citation.rows:
+        document = con.execute(
+            "SELECT 1 FROM documents WHERE document_id = ? AND file = ? AND table_name = ? LIMIT 1",
+            [citation.document_id, citation.file, citation.table],
+        ).fetchone()
+        if not document:
+            return [f"{citation.table}: document_id/file do not match table metadata"]
+        tables = {
+            r[0]
+            for r in con.execute("SELECT table_name FROM information_schema.tables").fetchall()
+        }
+        if citation.table not in tables:
+            return [f"unknown table {citation.table}"]
+        quoted = citation.table.replace('"', '""')
+        placeholders = ",".join("?" for _ in citation.rows)
+        cursor = con.execute(
+            f'SELECT * FROM "{quoted}" WHERE _row_id IN ({placeholders})', citation.rows
+        )
+        rows = cursor.fetchall()
+        if len(rows) != len(set(citation.rows)):
+            problems.append(f"{citation.table}: one or more cited rows do not exist")
+        if citation.excerpt and rows:
+            population = "\n".join(" | ".join(str(v) for v in row if v is not None) for row in rows)
+            if citation.excerpt.casefold() not in population.casefold():
+                problems.append(f"{citation.table}: excerpt is not present in cited rows")
+        return problems
+
+    ref = citation.passage or (f"page {citation.page}" if citation.page is not None else None)
+    if ref:
+        row = con.execute(
+            "SELECT text FROM document_texts WHERE document_id = ? AND file = ? AND ref = ? LIMIT 1",
+            [citation.document_id, citation.file, ref],
+        ).fetchone()
+        if not row:
+            return [f"{citation.file}: cited passage {ref!r} does not exist"]
+        if citation.excerpt and citation.excerpt.casefold() not in str(row[0]).casefold():
+            problems.append(f"{citation.file}: excerpt is not present in cited passage")
+        return problems
+    return [f"{citation.file}: citation has no verifiable locator"]
+
+
+def fallback_findings(rule_hits: list[RuleHit], minimum_score: int = 75) -> list[Finding]:
+    """Keep strong deterministic signals visible if model investigation fails or returns nothing."""
+    groups: dict[tuple[str, str], list[RuleHit]] = {}
+    for hit in rule_hits:
+        if hit.risk_score >= minimum_score:
+            groups.setdefault((hit.subject_type, hit.subject_id), []).append(hit)
+    findings: list[Finding] = []
+    for i, hits in enumerate(groups.values(), start=1):
+        citations: list[Citation] = []
+        seen: set[tuple] = set()
+        for hit in hits:
+            for citation in hit.evidence:
+                key = (
+                    citation.document_id,
+                    citation.table,
+                    tuple(citation.rows or []),
+                    citation.page,
+                    citation.passage,
+                )
+                if key not in seen:
+                    seen.add(key)
+                    citations.append(citation)
+        primary = max(hits, key=lambda h: h.risk_score)
+        findings.append(
+            Finding(
+                id=f"F-{i:03d}",
+                title=primary.title,
+                description=" ".join(hit.summary for hit in hits),
+                likelihood=max(hit.risk_score for hit in hits),
+                amount_eur=max(
+                    (hit.amount_eur for hit in hits if hit.amount_eur is not None), default=None
+                ),
+                status="needs_review",
+                rule_ids=sorted({hit.rule_id for hit in hits}),
+                rule_hit_ids=[hit.id for hit in hits],
+                citations=citations,
+            )
+        )
     return findings
 
 

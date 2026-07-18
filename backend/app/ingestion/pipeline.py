@@ -45,6 +45,11 @@ def ingest_zip(zip_path: Path, work_dir: Path) -> IngestResult:
     extract_dir = work_dir / "extracted"
     extract_dir.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(zip_path) as zf:
+        root = extract_dir.resolve()
+        for member in zf.infolist():
+            destination = (extract_dir / member.filename).resolve()
+            if not destination.is_relative_to(root):
+                raise ValueError(f"unsafe path in ZIP archive: {member.filename}")
         zf.extractall(extract_dir)
 
     db_path = work_dir / "dossier.duckdb"

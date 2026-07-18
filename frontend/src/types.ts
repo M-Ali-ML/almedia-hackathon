@@ -17,7 +17,31 @@ export interface Finding {
   description: string
   likelihood: number
   amount_eur?: number | null
+  status: 'finding' | 'needs_review'
+  rule_ids: string[]
+  rule_hit_ids: string[]
   citations: Citation[]
+}
+
+export interface RuleHit {
+  id: string
+  rule_id: 'K1' | 'K2' | 'K3' | 'K4' | 'K5' | 'K6' | 'K7'
+  subject_type: string
+  subject_id: string
+  title: string
+  summary: string
+  risk_score: number
+  amount_eur?: number | null
+  signals: string[]
+  evidence: Citation[]
+  counter_evidence: Citation[]
+  missing_evidence: string[]
+}
+
+export interface DetectionSummary {
+  executed: string[]
+  skipped: Record<string, string>
+  hit_counts: Record<string, number>
 }
 
 export interface ContextItem {
@@ -43,6 +67,7 @@ export type Stage =
   | 'extracting'
   | 'ingesting'
   | 'building_context'
+  | 'detecting'
   | 'analyzing'
   | 'done'
   | 'error'
@@ -59,6 +84,8 @@ export interface BatchResult {
   status: BatchStatus
   documents: DocumentInfo[]
   global_context?: GlobalContext | null
+  detection?: DetectionSummary | null
+  rule_hits: RuleHit[]
   findings: Finding[]
 }
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # ---------------------------------------------------------------------------
 # Provenance / citations
@@ -35,6 +35,14 @@ class Citation(BaseModel):
     passage: str | None = Field(default=None, description="Reference like 'paragraph 12'")
     excerpt: str | None = Field(default=None, description="Short verbatim excerpt of the evidence")
 
+    @model_validator(mode="after")
+    def require_locator(self) -> "Citation":
+        if not self.rows and self.page is None and not self.passage:
+            raise ValueError("citation must identify source rows, a page, or a passage")
+        if self.rows and not self.table:
+            raise ValueError("row citations require a table")
+        return self
+
 
 class DocumentInfo(BaseModel):
     document_id: str
@@ -55,6 +63,9 @@ class Finding(BaseModel):
     description: str = Field(description="Free-text description of the suspected issue, audit language")
     likelihood: int = Field(ge=0, le=100, description="0-100 confidence that this is a real issue")
     amount_eur: float | None = Field(default=None, description="Estimated financial impact if known")
+    status: Literal["finding", "needs_review"] = "finding"
+    rule_ids: list[str] = Field(default_factory=list)
+    rule_hit_ids: list[str] = Field(default_factory=list)
     citations: list[Citation] = Field(min_length=1)
 
 
@@ -65,13 +76,51 @@ class AgentFinding(BaseModel):
     description: str
     likelihood: int = Field(ge=0, le=100)
     amount_eur: float | None = None
+    status: Literal["finding", "needs_review"] = "finding"
+    rule_ids: list[str] = Field(default_factory=list)
+    rule_hit_ids: list[str] = Field(default_factory=list)
     citations: list[Citation] = Field(min_length=1)
+
+
+class CandidateDisposition(BaseModel):
+    rule_hit_ids: list[str] = Field(min_length=1)
+    disposition: Literal["finding", "dismissed", "needs_review"]
+    reasoning: str
 
 
 class AnalysisReport(BaseModel):
     """Structured output of the auditor agent run."""
 
+    investigations: list[CandidateDisposition]
     findings: list[AgentFinding]
+
+
+# ---------------------------------------------------------------------------
+# Deterministic JET candidate signals
+# ---------------------------------------------------------------------------
+
+
+class RuleHit(BaseModel):
+    """Evidence-backed investigation candidate; not yet a fraud conclusion."""
+
+    id: str = ""
+    rule_id: Literal["K1", "K2", "K3", "K4", "K5", "K6", "K7"]
+    subject_type: str
+    subject_id: str
+    title: str
+    summary: str
+    risk_score: int = Field(ge=0, le=100)
+    amount_eur: float | None = None
+    signals: list[str] = Field(default_factory=list)
+    evidence: list[Citation] = Field(min_length=1)
+    counter_evidence: list[Citation] = Field(default_factory=list)
+    missing_evidence: list[str] = Field(default_factory=list)
+
+
+class DetectionSummary(BaseModel):
+    executed: list[str] = Field(default_factory=list)
+    skipped: dict[str, str] = Field(default_factory=dict)
+    hit_counts: dict[str, int] = Field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -82,7 +131,7 @@ class AnalysisReport(BaseModel):
 class ContextItem(BaseModel):
     kind: Literal["company_fact", "policy", "terminology", "document_relationship"]
     statement: str
-    citations: list[Citation] = Field(default_factory=list)
+    citations: list[Citation] = Field(min_length=1)
 
 
 class GlobalContext(BaseModel):
@@ -98,6 +147,7 @@ Stage = Literal[
     "extracting",
     "ingesting",
     "building_context",
+    "detecting",
     "analyzing",
     "done",
     "error",
@@ -108,6 +158,7 @@ STAGE_ORDER: list[Stage] = [
     "extracting",
     "ingesting",
     "building_context",
+    "detecting",
     "analyzing",
     "done",
 ]
@@ -125,4 +176,6 @@ class BatchResult(BaseModel):
     status: BatchStatus
     documents: list[DocumentInfo] = Field(default_factory=list)
     global_context: GlobalContext | None = None
+    detection: DetectionSummary | None = None
+    rule_hits: list[RuleHit] = Field(default_factory=list)
     findings: list[Finding] = Field(default_factory=list)

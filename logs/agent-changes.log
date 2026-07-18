@@ -27,3 +27,5 @@ Added INFO-level pipeline logging across main, ingestion, and the auditor agent 
 ## 2026-07-18 16:42 CEST
 Made pipeline process stages log as explicit PROCESS lines and streamed LLM agent events so the terminal shows thinking, tool calls, and which stage is active.
 
+## 2026-07-18 17:22 CEST
+Added a data-driven K1–K7 detection stage with cited rule hits, mandatory agent dispositions, high-confidence fallback findings, exact citation checks, restricted SQL, and minimal rule/status UI indicators so ingested dossiers produce actionable fraud candidates.

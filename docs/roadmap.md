@@ -2,9 +2,9 @@
 
 Not phases — a prioritized, concrete backlog. Ordered by judging leverage per `pre-docs/hackathon-briefing.md` (evidence chains > corroboration > decoy discipline > policy extraction > impact rollup) and the PRD/user stories. Each step builds on the MVP seams documented in `docs/mvp.md`.
 
-## 1. Deterministic test library (biggest detection win)
+## 1. Tune and broaden the implemented K1–K7 detectors
 
-Named, generalizable checks as plain SQL/Python functions over the batch DuckDB, exposed to the agent as tools and runnable standalone (PRD K1–K7, user stories 6–9):
+K1–K7 candidate generation now runs before the agent. The next detection work should use additional same-shaped dossiers to tune candidate thresholds and counter-evidence:
 
 - three-way match: vendor invoice ↔ goods receipt (`wareneingangsliste_2025`) ↔ payment
 - new-vendor risk profile: created mid-year, no prior-year balance, first invoice fast
@@ -14,7 +14,7 @@ Named, generalizable checks as plain SQL/Python functions over the batch DuckDB,
 - threshold-split clustering: same vendor + same day, amounts just under the approval limit from global context
 - round-amount / off-hours / posting-user statistics
 
-Rationale: deterministic tests are reliable on the unseen final dossier; the agent then combines and narrates the results instead of hunting from scratch. Cheaper, faster, more reproducible.
+Keep entity ids, dates, amounts, users, and policy limits data-driven. Add new procedures only when they improve fraud coverage on the stable challenge schema.
 
 ## 2. Verifier step + decoy discipline (protects the score)
 
