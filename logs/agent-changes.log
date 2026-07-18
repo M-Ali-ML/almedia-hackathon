@@ -27,3 +27,9 @@ Added INFO-level pipeline logging across main, ingestion, and the auditor agent 
 ## 2026-07-18 16:42 CEST
 Made pipeline process stages log as explicit PROCESS lines and streamed LLM agent events so the terminal shows thinking, tool calls, and which stage is active.
 
+## 2026-07-18 17:03 CEST
+Built the Phase 0 eval harness: backend/eval/answer_key.yaml (machine-readable F1-F4 schemes and D1-D7 decoys from data/info.md, verified against the sample DuckDB, scoring-only — never enters prompts) and backend/scripts/eval.py (full / --reuse-batch / --score-only modes scoring scheme recall, decoy false positives and wall-clock vs the 10-min budget, archiving each run under backend/eval/runs/ and exiting non-zero below target); added pyyaml dependency.
+
+## 2026-07-18 17:20 CEST
+Built the Phase 1 deterministic check library (backend/app/checks/): 9 generalizable JET checks (new-vendor profile, missing goods receipt, creator=approver SoD, permission concentration, repair vocabulary in assets, cut-off unaccrued, threshold-split clusters, round amounts, off-hours stats) over a fuzzy table/column resolver, runnable via python -m app.checks and wired into the pipeline and eval harness with checks.json persisted per batch; also fixed scripts/smoke_test.py for the streaming agent API.
+

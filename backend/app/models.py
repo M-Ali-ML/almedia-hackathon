@@ -68,10 +68,28 @@ class AgentFinding(BaseModel):
     citations: list[Citation] = Field(min_length=1)
 
 
+class RuledOut(BaseModel):
+    """An anomaly the agent investigated and dismissed as an innocent explanation.
+
+    Recording these is scored positively (it demonstrates decoy discipline) and
+    prevents the "silently emit nothing" escape hatch: every deterministic check
+    that fired must end up either as a Finding or as a RuledOut entry.
+    """
+
+    title: str = Field(description="The candidate/anomaly that was checked")
+    reason: str = Field(description="Why it is clean, in audit language")
+    check_id: str | None = Field(default=None, description="Related deterministic check, if any")
+    citations: list[Citation] = Field(default_factory=list)
+
+
 class AnalysisReport(BaseModel):
     """Structured output of the auditor agent run."""
 
     findings: list[AgentFinding]
+    ruled_out: list[RuledOut] = Field(
+        default_factory=list,
+        description="Anomalies checked and dismissed with the innocent explanation found",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -126,3 +144,4 @@ class BatchResult(BaseModel):
     documents: list[DocumentInfo] = Field(default_factory=list)
     global_context: GlobalContext | None = None
     findings: list[Finding] = Field(default_factory=list)
+    ruled_out: list[RuledOut] = Field(default_factory=list)

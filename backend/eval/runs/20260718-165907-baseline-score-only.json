@@ -1,0 +1,96 @@
+{
+  "timestamp": "20260718-165907",
+  "label": "baseline",
+  "mode": "score-only",
+  "batch_id": "4ca399ba06ac",
+  "model": "openai:gpt-5.1",
+  "scores": {
+    "counts": {
+      "findings": 0,
+      "schemes_detected": 0,
+      "schemes_total": 4,
+      "decoys_flagged": 0
+    },
+    "schemes": [
+      {
+        "id": "F1",
+        "title": "Fake vendor Ratio Consulting GmbH — cash misappropriation",
+        "detected": false,
+        "matched_by": []
+      },
+      {
+        "id": "F2",
+        "title": "Repairs capitalized as fixed assets",
+        "detected": false,
+        "matched_by": []
+      },
+      {
+        "id": "F3",
+        "title": "December costs parked in January, no accrual (cut-off)",
+        "detected": false,
+        "matched_by": []
+      },
+      {
+        "id": "F4",
+        "title": "Payments split under the EUR 10,000 approval limit",
+        "detected": false,
+        "matched_by": []
+      }
+    ],
+    "decoys": [
+      {
+        "id": "D1",
+        "title": "EUR 480k machine purchase",
+        "flagged": false,
+        "flagged_by": [],
+        "mentioned_by": []
+      },
+      {
+        "id": "D2",
+        "title": "Nord Logistik vs Nordlicht Logistik near-duplicate vendors",
+        "flagged": false,
+        "flagged_by": [],
+        "mentioned_by": []
+      },
+      {
+        "id": "D3",
+        "title": "Vega Werkstoffe — new mid-year vendor",
+        "flagged": false,
+        "flagged_by": [],
+        "mentioned_by": []
+      },
+      {
+        "id": "D4",
+        "title": "Year-end volume bonuses to 22 customers",
+        "flagged": false,
+        "flagged_by": [],
+        "mentioned_by": []
+      },
+      {
+        "id": "D5",
+        "title": "EUR 220k Konzernumlage to Austrian parent",
+        "flagged": false,
+        "flagged_by": [],
+        "mentioned_by": []
+      },
+      {
+        "id": "D6",
+        "title": "Asset scrapped for EUR 1,200 at book value ~EUR 111,595",
+        "flagged": false,
+        "flagged_by": [],
+        "mentioned_by": []
+      },
+      {
+        "id": "D7",
+        "title": "Invoice AR502040 + credit note SG502041 (EUR 18,500)",
+        "flagged": false,
+        "flagged_by": [],
+        "mentioned_by": []
+      }
+    ],
+    "unmatched_findings": []
+  },
+  "timings_s": {},
+  "passed": false,
+  "verdict": "schemes 0/4 (min 4), decoys flagged 0 (max 0)"
+}

@@ -1,0 +1,131 @@
+# Answer key for the SAMPLE dossier only (data/Uebungsdaten_Muster_Verpackungen.zip).
+# Derived from data/info.md; every identifier below was verified against the
+# ingested DuckDB of the sample batch.
+#
+# HARD RULE: this file exists for scoring in scripts/eval.py ONLY.
+# It must NEVER be read by, embedded in, or referenced from any agent prompt,
+# global context, tool output, or check implementation. Judging day uses a
+# different dossier with a regenerated scheme set — leaking this key into the
+# pipeline would only overfit the sample and teach nothing.
+#
+# Matching semantics (see scripts/eval.py):
+#   A finding "detects" a scheme if any term in `match_any` occurs as a
+#   case-insensitive substring of the finding's title, description, or
+#   citation fields (file, table, sheet, passage, excerpt).
+#   A decoy is "flagged" (penalty) if a finding that matches NO scheme
+#   mentions any of the decoy's terms.
+
+schemes:
+  - id: F1
+    title: "Fake vendor Ratio Consulting GmbH — cash misappropriation"
+    amount_eur: 248000
+    # Shell vendor 209101, created+approved by MV-U05, 5 round Beratung
+    # invoices, no goods receipts.
+    match_any:
+      - "209101"
+      - "ratio consulting"
+
+  - id: F2
+    title: "Repairs capitalized as fixed assets"
+    amount_eur: 150800
+    # Six repair-named 2025 asset additions in classes 040000/060000
+    # (av__anlagen _row_ids 191-196) instead of expense account 670000.
+    match_any:
+      - "040000-000191"
+      - "040000-000192"
+      - "060000-000193"
+      - "040000-000194"
+      - "060000-000195"
+      - "040000-000196"
+      - "reparatur konfektioniermaschine"
+      - "austausch hydraulikaggregat"
+      - "instandsetzung förderband"
+      - "generalüberholung stanzautomat"
+      - "reparatur kälteanlage"
+      - "austausch antriebssteuerung"
+
+  - id: F3
+    title: "December costs parked in January, no accrual (cut-off)"
+    amount_eur: 192000
+    # The 8 invoices in fakturajournal_januar_2026_kreditoren with
+    # FAKTURADATUM in Jan 2026 but LEISTUNGSDATUM in Dec 2025, unaccrued.
+    match_any:
+      - "er901427"
+      - "er901428"
+      - "er901429"
+      - "er901430"
+      - "er901431"
+      - "er901432"
+      - "er901433"
+      - "er901434"
+      - "209130"
+      - "209131"
+      - "209132"
+      - "209133"
+      - "209134"
+      - "209135"
+      - "209136"
+      - "209137"
+
+  - id: F4
+    title: "Payments split under the EUR 10,000 approval limit"
+    amount_eur: 39040
+    # 4 payments on 14.10.2025 to vendor 200007 Castor Papier GmbH,
+    # each just under 10k (9,780 / 9,820 / 9,750 / 9,690).
+    match_any:
+      - "200007"
+      - "castor papier"
+      - "sammel-200007"
+
+decoys:
+  - id: D1
+    title: "EUR 480k machine purchase"
+    innocent_because: "Real capital investment, request IA-2025-04, real asset"
+    match_any:
+      - "040000-000197"
+      - "er901435"
+      - "ia-2025-04"
+
+  - id: D2
+    title: "Nord Logistik vs Nordlicht Logistik near-duplicate vendors"
+    innocent_because: "Different VAT-IDs, both have real goods receipts"
+    match_any:
+      - "209110"
+      - "209111"
+      - "nord logistik"
+      - "nordlicht logistik"
+
+  - id: D3
+    title: "Vega Werkstoffe — new mid-year vendor"
+    innocent_because: "Four-eyes approval and real deliveries (honest twin of F1)"
+    match_any:
+      - "209112"
+      - "vega werkstoffe"
+
+  - id: D4
+    title: "Year-end volume bonuses to 22 customers"
+    innocent_because: "Documented rebate program, booked correctly against 332000"
+    match_any:
+      - "440020"
+      - "volumenbonus"
+
+  - id: D5
+    title: "EUR 220k Konzernumlage to Austrian parent"
+    innocent_because: "Disclosed related party (Gesellschafterliste), arm's length"
+    match_any:
+      - "209113"
+      - "konzernumlage"
+
+  - id: D6
+    title: "Asset scrapped for EUR 1,200 at book value ~EUR 111,595"
+    innocent_because: "Documented scrapping of an old machine, not an under-value sale"
+    match_any:
+      - "040000-000005"
+      - "produktionsmaschine halle ii"
+
+  - id: D7
+    title: "Invoice AR502040 + credit note SG502041 (EUR 18,500)"
+    innocent_because: "Same-period revenue-neutral correction"
+    match_any:
+      - "ar502040"
+      - "sg502041"

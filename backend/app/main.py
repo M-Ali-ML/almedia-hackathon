@@ -19,6 +19,7 @@ from pydantic_ai.ui.ag_ui import AGUIAdapter  # noqa: E402
 
 from . import storage  # noqa: E402
 from .agent import AuditState, build_global_context, chat_agent, run_analysis  # noqa: E402
+from .checks import run_checks_for_batch  # noqa: E402
 from .ingestion import ingest_zip  # noqa: E402
 from .models import BatchResult, BatchStatus, DocumentInfo  # noqa: E402
 
@@ -61,6 +62,9 @@ async def _run_pipeline(batch_id: str) -> None:
             detail += f", {len(ingest.warnings)} warnings"
             logger.warning("[%s] ingestion warnings: %s", batch_id, ingest.warnings)
 
+        checks = await anyio.to_thread.run_sync(run_checks_for_batch, batch_id)
+        detail += f", {checks.total_hits} check hits"
+
         storage.save_status(batch_id, "building_context", detail)
         storage.save_result(result)
 
@@ -68,9 +72,11 @@ async def _run_pipeline(batch_id: str) -> None:
         storage.save_status(batch_id, "analyzing", detail)
         storage.save_result(result)
 
-        result.findings = await run_analysis(batch_id)
+        result.findings, result.ruled_out = await run_analysis(batch_id)
         result.status = storage.save_status(
-            batch_id, "done", f"{len(result.findings)} findings"
+            batch_id,
+            "done",
+            f"{len(result.findings)} findings, {len(result.ruled_out)} ruled out",
         )
         storage.save_result(result)
         logger.info("=" * 60)

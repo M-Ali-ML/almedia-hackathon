@@ -24,8 +24,8 @@ os.environ.setdefault("AUDITOR_MODEL", "test")
 
 import duckdb
 import httpx
-from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, ToolReturnPart
-from pydantic_ai.models.function import AgentInfo, FunctionModel
+from pydantic_ai.messages import ModelMessage, ToolReturnPart
+from pydantic_ai.models.function import AgentInfo, DeltaToolCall, FunctionModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -44,12 +44,16 @@ SAMPLE_ZIP = Path(
 SQL = "SELECT _row_id, lieferantenkontonummer, lieferantenname FROM kreditoren__lieferanten LIMIT 3"
 
 
-def scripted_analysis(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-    """First call run_sql with real SQL, then emit a finding citing the rows we saw."""
+async def scripted_analysis(messages: list[ModelMessage], info: AgentInfo):
+    """First call run_sql with real SQL, then emit a finding citing the rows we saw.
+
+    Streaming form: run_analysis consumes the agent via run_stream_events.
+    """
     last_parts = messages[-1].parts
     tool_returns = [p for p in last_parts if isinstance(p, ToolReturnPart)]
     if not tool_returns:
-        return ModelResponse(parts=[ToolCallPart("run_sql", {"query": SQL})])
+        yield {0: DeltaToolCall(name="run_sql", json_args=json.dumps({"query": SQL}))}
+        return
 
     payload = json.loads(tool_returns[0].content)
     first_row = payload["rows"][0]
@@ -72,7 +76,7 @@ def scripted_analysis(messages: list[ModelMessage], info: AgentInfo) -> ModelRes
             }
         ]
     }
-    return ModelResponse(parts=[ToolCallPart("final_result", report)])
+    yield {0: DeltaToolCall(name="final_result", json_args=json.dumps(report))}
 
 
 async def scripted_chat_stream(messages: list[ModelMessage], info: AgentInfo):
@@ -96,8 +100,8 @@ async def main() -> None:
     (work / "global_context.json").write_text('{"items": []}')
 
     # 2. analysis with the scripted model
-    with analysis_agent().override(model=FunctionModel(scripted_analysis)):
-        findings = await run_analysis(BATCH_ID)
+    with analysis_agent().override(model=FunctionModel(stream_function=scripted_analysis)):
+        findings, _ruled_out = await run_analysis(BATCH_ID)
     assert len(findings) == 1, findings
     finding = findings[0]
     assert finding.id == "F-001" and finding.citations, finding

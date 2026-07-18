@@ -31,10 +31,12 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.run import AgentRunResult
 from pydantic_ai.ui import StateDeps
+from pydantic_ai.usage import UsageLimits
 
 from ..ingestion import schema_overview
-from ..models import AnalysisReport, Finding, GlobalContext
+from ..models import AnalysisReport, Finding, GlobalContext, RuledOut
 from .. import storage
+from ..checks import CHECKS_BY_ID, load_check_report, run_one_check
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,10 @@ MODEL = os.environ.get("AUDITOR_MODEL", "openai:gpt-5.1")
 
 MAX_ROWS = 200
 MAX_CHARS = 40_000
+
+# The analysis must run many focused tool rounds (the shallow ~4-call run is the
+# failure mode we are fixing), so raise the request budget well above default.
+ANALYSIS_REQUEST_LIMIT = int(os.environ.get("AUDITOR_REQUEST_LIMIT", "60"))
 
 
 def _snip(text: str, limit: int = 200) -> str:
@@ -89,11 +95,15 @@ async def _run_with_progress[AgentDepsT, OutputT](
     batch_id: str,
     process: str,
     deps: AgentDepsT | None = None,
+    usage_limits: UsageLimits | None = None,
 ) -> AgentRunResult[OutputT]:
     """Run an agent while streaming progress into the server log."""
     logger.info("[%s] %s — waiting on LLM (%s)…", batch_id, process, MODEL)
     result: AgentRunResult[OutputT] | None = None
-    async with agent.run_stream_events(prompt, deps=deps) as events:
+    kwargs: dict[str, Any] = {"deps": deps}
+    if usage_limits is not None:
+        kwargs["usage_limits"] = usage_limits
+    async with agent.run_stream_events(prompt, **kwargs) as events:
         async for event in events:
             _log_agent_event(batch_id, process, event)
             if isinstance(event, AgentRunResultEvent):
@@ -146,11 +156,23 @@ All files were normalized into one read-only DuckDB database.
 
 Method — classic Journal Entry Testing: understand the population first, then
 investigate who posted what, when, where, and whether controls were respected.
-Corroborate across independent sources before concluding anything. For every
-anomaly, actively look for the innocent explanation (proper approvals, real
-goods movements, documented business reasons); only report items where you
-checked and could not find one. Missing real issues is bad, but flagging clean
-items is also penalized — report an item only with concrete evidence.
+Corroborate across independent sources before concluding anything.
+
+A deterministic check library has already run over this dossier and surfaced
+candidate anomalies with exact table/_row_id evidence (see "Deterministic check
+candidates" below). These are pre-computed leads, not conclusions — your job is
+to investigate each one with SQL, corroborate it across independent sources,
+and then EITHER report it as a finding OR record it as ruled_out with the
+innocent explanation you found. Treat the candidates as your worklist; you may
+also find issues the checks missed.
+
+Decoy discipline: some candidates are innocent (a new vendor with four-eyes
+approval and real deliveries; a large but genuine capital asset; a disclosed
+related party; a documented rebate). Flagging a clean item costs points — so
+rule those out explicitly rather than reporting them. But the opposite failure
+is just as bad: returning few or no findings when strong, corroborated signals
+exist is a FAILURE. Every check candidate that fired must appear in your output
+as either a finding or a ruled_out entry — never silently dropped.
 
 Hard rules for evidence:
 - Every claim must cite the exact source: document_id, file, table and
@@ -163,25 +185,39 @@ Hard rules for evidence:
 
 Company policies, terminology and document relationships extracted from the
 prose documents are provided below as "Global context" — use them (e.g.
-approval thresholds) when designing your checks.
+approval thresholds) when corroborating candidates.
 """
 
 ANALYSIS_PROMPT = """\
-Analyze this dossier for indications of fraud or material misstatement.
+Analyze this dossier for fraud and material misstatement, working from the
+deterministic check candidates in your instructions plus your own JET procedures.
 
-Work systematically: inspect the schema, profile key tables (vendors,
-customers, ledger postings, asset register, goods receipts, master-data
-changes, approval logs, permissions, next-period postings), then run targeted
-cross-document checks based on standard JET procedures and the company's own
-policies from the global context. Think about segregation of duties, timing
-around year-end, approval thresholds, master-data changes, and whether
-recorded transactions are backed by real goods/services.
+Process — do NOT stop after a shallow browse:
+1. Skim the schema and the check candidates. Build a worklist from every check
+   that fired.
+2. For each candidate, run focused SQL against the exact entities/rows named
+   (e.g. the specific vendor account, asset numbers, invoice ids). Do not settle
+   for `SELECT * ... LIMIT 50`; chase the actual entity.
+3. Corroborate across independent sources before concluding: for a suspected
+   fake vendor, check the master-data change log (creator vs approver), the
+   goods-receipt list, the permission matrix, and the ledger postings. For
+   capitalized repairs, compare the asset wording against the debited account
+   and whether a repair expense account exists. For cut-off, compare invoice vs
+   service dates against year-end accruals actually booked. For split payments,
+   confirm same vendor + same day + each under the policy limit.
+4. Actively seek the innocent explanation for each candidate.
 
-Return your findings: a short title, an audit-language description of what the
-evidence shows and which innocent explanations you ruled out, a likelihood
-score 0-100, the estimated EUR impact if quantifiable, and citations for every
-factual claim. Order findings by evidence strength. Do not include weak
-hunches without corroboration.
+Then produce:
+- findings: real issues, each with a short title, an audit-language description
+  of the evidence AND which innocent explanations you ruled out, a likelihood
+  0-100, the estimated EUR impact if quantifiable, and citations for every
+  factual claim. Order by evidence strength.
+- ruled_out: every candidate you investigated and dismissed, with the concrete
+  innocent explanation and (where relevant) the related check_id.
+
+Coverage requirement: the union of findings and ruled_out must account for
+every check candidate that fired. An empty or near-empty findings list when
+strongly corroborated signals exist is a failure mode, not caution.
 """
 
 
@@ -195,6 +231,12 @@ def _instructions(ctx: RunContext[AuditDeps]) -> str:
     context_path = storage.batch_dir(batch_id) / "global_context.json"
     if context_path.exists():
         parts.append("Global context:\n" + context_path.read_text())
+    report = load_check_report(batch_id)
+    if report is not None and report.fired:
+        parts.append(
+            "Deterministic check candidates (pre-computed leads with exact evidence; "
+            "investigate, then report or rule out each one):\n" + report.render_for_agent()
+        )
     if ctx.deps.state.finding:
         parts.append(
             "The auditor is asking follow-up questions about this specific finding "
@@ -226,6 +268,45 @@ def _register_tools(agent: Agent) -> None:
             raise ModelRetry(f"SQL error: {exc}") from exc
         finally:
             con.close()
+
+    @agent.tool
+    def list_checks(ctx: RunContext[AuditDeps]) -> str:
+        """List the deterministic checks and how many candidates each produced.
+
+        These are the pre-computed leads; use run_check to get the full detail
+        for one, or run_sql to investigate the cited rows directly.
+        """
+        batch_id = ctx.deps.state.batch_id
+        report = load_check_report(batch_id)
+        if report is None:
+            return "No check report available for this batch."
+        lines = [
+            f"{r.check_id}: {len(r.hits)} candidate(s) [{r.status}] — {r.title}"
+            for r in report.results
+        ]
+        return "\n".join(lines)
+
+    @agent.tool
+    def run_check(ctx: RunContext[AuditDeps], check_id: str) -> str:
+        """Re-run one deterministic check by id and return its full result as JSON.
+
+        Available ids come from list_checks (e.g. 'new_vendor_profile',
+        'missing_goods_receipt', 'repair_vocab_in_assets', 'cutoff_unaccrued',
+        'threshold_split_cluster'). Each hit carries table + _row_id evidence.
+        """
+        batch_id = ctx.deps.state.batch_id
+        logger.info("[%s] tool run_check: %s", batch_id, check_id)
+        if check_id not in CHECKS_BY_ID:
+            raise ModelRetry(
+                f"Unknown check '{check_id}'. Available: {', '.join(sorted(CHECKS_BY_ID))}."
+            )
+        con = _connect(ctx)
+        try:
+            result = run_one_check(con, check_id)
+        finally:
+            con.close()
+        logger.info("[%s] tool run_check %s → %d hits", batch_id, check_id, len(result.hits))
+        return result.model_dump_json()
 
     @agent.tool
     def read_document(ctx: RunContext[AuditDeps], file_or_document_id: str) -> str:
@@ -320,7 +401,7 @@ def chat_agent() -> Agent[AuditDeps, str]:
     return agent
 
 
-async def run_analysis(batch_id: str) -> list[Finding]:
+async def run_analysis(batch_id: str) -> tuple[list[Finding], list[RuledOut]]:
     deps = StateDeps(AuditState(batch_id=batch_id))
     result = await _run_with_progress(
         analysis_agent(),
@@ -328,6 +409,7 @@ async def run_analysis(batch_id: str) -> list[Finding]:
         batch_id=batch_id,
         process="fraud analysis",
         deps=deps,
+        usage_limits=UsageLimits(request_limit=ANALYSIS_REQUEST_LIMIT),
     )
     findings: list[Finding] = []
     for i, f in enumerate(result.output.findings, start=1):
@@ -349,8 +431,14 @@ async def run_analysis(batch_id: str) -> list[Finding]:
             f.amount_eur,
             _snip(f.title, 80),
         )
-    logger.info("[%s] fraud analysis complete — %d findings", batch_id, len(findings))
-    return findings
+    ruled_out = list(result.output.ruled_out)
+    logger.info(
+        "[%s] fraud analysis complete — %d findings, %d ruled out",
+        batch_id,
+        len(findings),
+        len(ruled_out),
+    )
+    return findings, ruled_out
 
 
 # ---------------------------------------------------------------------------
