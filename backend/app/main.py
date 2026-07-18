@@ -18,7 +18,13 @@ from pydantic_ai.ui import StateDeps  # noqa: E402
 from pydantic_ai.ui.ag_ui import AGUIAdapter  # noqa: E402
 
 from . import storage  # noqa: E402
-from .agent import AuditState, build_global_context, chat_agent, run_analysis  # noqa: E402
+from .agent import (  # noqa: E402
+    AuditState,
+    build_global_context,
+    chat_agent,
+    run_analysis,
+    run_verification,
+)
 from .checks import run_checks_for_batch  # noqa: E402
 from .ingestion import ingest_zip  # noqa: E402
 from .models import BatchResult, BatchStatus, DocumentInfo  # noqa: E402
@@ -31,7 +37,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Fraud Audit Agent (MVP)")
+app = FastAPI(title="Vouch")
 
 app.add_middleware(
     CORSMiddleware,
@@ -72,7 +78,11 @@ async def _run_pipeline(batch_id: str) -> None:
         storage.save_status(batch_id, "analyzing", detail)
         storage.save_result(result)
 
-        result.findings, result.ruled_out = await run_analysis(batch_id)
+        findings, ruled_out = await run_analysis(batch_id)
+        storage.save_status(batch_id, "analyzing", "verifying findings")
+        result.findings, result.ruled_out = await run_verification(
+            batch_id, findings, ruled_out
+        )
         result.status = storage.save_status(
             batch_id,
             "done",

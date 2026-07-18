@@ -140,7 +140,7 @@ def score(findings: list[dict[str, Any]], key: dict[str, Any]) -> dict[str, Any]
 
 async def run_full(zip_path: Path, batch_id: str, timings: dict[str, float]) -> list[dict]:
     from app import storage
-    from app.agent import build_global_context, run_analysis
+    from app.agent import build_global_context, run_analysis, run_verification
     from app.ingestion import ingest_zip
     from app.models import BatchResult, BatchStatus
 
@@ -168,6 +168,10 @@ async def run_full(zip_path: Path, batch_id: str, timings: dict[str, float]) -> 
     findings, ruled_out = await run_analysis(batch_id)
     timings["analysis"] = time.monotonic() - t0
 
+    t0 = time.monotonic()
+    findings, ruled_out = await run_verification(batch_id, findings, ruled_out)
+    timings["verification"] = time.monotonic() - t0
+
     result = BatchResult(
         batch_id=batch_id,
         status=BatchStatus(batch_id=batch_id, stage="done", detail=f"{len(findings)} findings (eval)"),
@@ -183,7 +187,7 @@ async def run_full(zip_path: Path, batch_id: str, timings: dict[str, float]) -> 
 async def run_reuse(source_batch: str, batch_id: str, timings: dict[str, float]) -> list[dict]:
     """Copy the ingested DB + global context from an existing batch, re-run analysis only."""
     from app import storage
-    from app.agent import run_analysis
+    from app.agent import run_analysis, run_verification
     from app.models import BatchResult, BatchStatus
 
     source = storage.batch_dir(source_batch)
@@ -204,6 +208,10 @@ async def run_reuse(source_batch: str, batch_id: str, timings: dict[str, float])
     t0 = time.monotonic()
     findings, ruled_out = await run_analysis(batch_id)
     timings["analysis"] = time.monotonic() - t0
+
+    t0 = time.monotonic()
+    findings, ruled_out = await run_verification(batch_id, findings, ruled_out)
+    timings["verification"] = time.monotonic() - t0
 
     source_result = storage.load_result(source_batch)
     result = BatchResult(

@@ -16,7 +16,7 @@ todos:
     status: pending
   - id: verifier-scoring
     content: "Phase 4: verifier pass re-deriving citations + computed multi-source corroboration score replacing LLM likelihood"
-    status: pending
+    status: completed
   - id: judging-ux
     content: "Phase 5: accept/reject/annotate persistence, evidence viewer endpoint + highlighting, financial impact rollup, ruled-out list in UI"
     status: pending

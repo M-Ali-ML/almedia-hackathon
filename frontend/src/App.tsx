@@ -54,7 +54,7 @@ export default function App() {
       <header className="border-b border-slate-200 bg-slate-900 text-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div>
-            <h1 className="text-lg font-bold tracking-tight">Fraud Audit Agent</h1>
+            <h1 className="text-lg font-bold tracking-tight">Vouch</h1>
             <p className="text-xs text-slate-400">
               Every claim linked to its source — no number without a source.
             </p>

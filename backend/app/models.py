@@ -53,9 +53,17 @@ class Finding(BaseModel):
     id: str = Field(description="Stable visible id, e.g. 'F-001'")
     title: str
     description: str = Field(description="Free-text description of the suspected issue, audit language")
-    likelihood: int = Field(ge=0, le=100, description="0-100 confidence that this is a real issue")
+    likelihood: int = Field(ge=0, le=100, description="0-100 confidence, computed from corroboration + verifier")
     amount_eur: float | None = Field(default=None, description="Estimated financial impact if known")
     citations: list[Citation] = Field(min_length=1)
+    # --- populated by the verifier pass (Phase 4) ---
+    source_count: int = Field(
+        default=0, description="Independent documents whose cited rows were confirmed to exist"
+    )
+    verified: bool = Field(default=False, description="Verifier independently confirmed the evidence")
+    verification_note: str | None = Field(
+        default=None, description="Second-pass verifier's audit note (why confirmed / caveats)"
+    )
 
 
 class AgentFinding(BaseModel):
@@ -80,6 +88,34 @@ class RuledOut(BaseModel):
     reason: str = Field(description="Why it is clean, in audit language")
     check_id: str | None = Field(default=None, description="Related deterministic check, if any")
     citations: list[Citation] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Verifier pass (Phase 4): independent second opinion on each finding
+# ---------------------------------------------------------------------------
+
+
+class FindingVerification(BaseModel):
+    """The verifier's independent verdict on one finding."""
+
+    finding_id: str = Field(description="Id of the finding under review, e.g. 'F-001'")
+    verdict: Literal["confirmed", "uncertain", "refuted"] = Field(
+        description="confirmed = evidence re-derived; refuted = innocent explanation found"
+    )
+    corroborating_document_ids: list[str] = Field(
+        default_factory=list,
+        description="Distinct documents independently confirmed to support the finding",
+    )
+    note: str = Field(description="Audit-language justification for the verdict")
+    innocent_explanation: str | None = Field(
+        default=None, description="For refuted findings: the concrete innocent explanation found"
+    )
+
+
+class VerificationReport(BaseModel):
+    """Structured output of the verifier agent run."""
+
+    verifications: list[FindingVerification] = Field(default_factory=list)
 
 
 class AnalysisReport(BaseModel):

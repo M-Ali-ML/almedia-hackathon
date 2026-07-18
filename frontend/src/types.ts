@@ -18,6 +18,16 @@ export interface Finding {
   likelihood: number
   amount_eur?: number | null
   citations: Citation[]
+  source_count?: number
+  verified?: boolean
+  verification_note?: string | null
+}
+
+export interface RuledOut {
+  title: string
+  reason: string
+  check_id?: string | null
+  citations: Citation[]
 }
 
 export interface ContextItem {
@@ -60,6 +70,7 @@ export interface BatchResult {
   documents: DocumentInfo[]
   global_context?: GlobalContext | null
   findings: Finding[]
+  ruled_out?: RuledOut[]
 }
 
 export interface ChatMessage {

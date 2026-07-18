@@ -36,3 +36,15 @@ Built the Phase 1 deterministic check library (backend/app/checks/): 9 generaliz
 ## 2026-07-18 17:40 CEST
 Wired Phase 2 of the fraud pipeline: the analysis agent is now fed the deterministic check candidates and must report-or-rule-out each one (new ruled_out output + RuledOut model, checklist/"empty is a failure" prompt, list_checks/run_check tools, raised tool-round budget). Switched the default model to openai:gpt-5.6-sol with a configurable reasoning effort after gpt-5.1 stalled on a single turn. Live eval on the sample dossier now scores 4/4 schemes, 0 decoys, in ~188s (down from 0/4).
 
+## 2026-07-18 17:50 CEST
+Rewrote the root README.md into a project overview covering the fraud-audit pipeline, stack, how to run it, and current vs planned phases from the reliable detection plan.
+
+## 2026-07-18 17:50 CEST
+Added Phase 4 verifier pass (backend/app/agent/verifier.py): an independent second-opinion agent re-derives every finding via SQL and returns confirmed/uncertain/refuted; refuted findings move to ruled_out, and each finding's likelihood is replaced by a corroboration-driven confidence based on the count of distinct documents whose cited rows actually resolve. Added FindingVerification/VerificationReport models and source_count/verified/verification_note fields (mirrored in frontend types), wired verification into the pipeline and eval harness (AUDITOR_VERIFY toggle). Live eval holds 4/4 schemes, 0 decoys in ~289s with F1 scored across 5 independent sources.
+
+## 2026-07-18 17:51 CEST
+Rebranded the app to Spur across the root README, FastAPI title, and frontend header/page title.
+
+## 2026-07-18 17:52 CEST
+Renamed the app from Spur to Vouch across README, FastAPI title, and frontend branding.
+

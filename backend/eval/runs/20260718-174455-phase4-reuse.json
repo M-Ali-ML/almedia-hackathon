@@ -1,0 +1,149 @@
+{
+  "timestamp": "20260718-174455",
+  "label": "phase4",
+  "mode": "reuse",
+  "batch_id": "eval-20260718-174455",
+  "model": "openai:gpt-5.6-sol",
+  "scores": {
+    "counts": {
+      "findings": 5,
+      "schemes_detected": 4,
+      "schemes_total": 4,
+      "decoys_flagged": 0
+    },
+    "schemes": [
+      {
+        "id": "F1",
+        "title": "Fake vendor Ratio Consulting GmbH — cash misappropriation",
+        "detected": true,
+        "matched_by": [
+          {
+            "finding_id": "F-001",
+            "terms": [
+              "209101",
+              "ratio consulting"
+            ]
+          },
+          {
+            "finding_id": "F-005",
+            "terms": [
+              "ratio consulting"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "F2",
+        "title": "Repairs capitalized as fixed assets",
+        "detected": true,
+        "matched_by": [
+          {
+            "finding_id": "F-003",
+            "terms": [
+              "040000-000191",
+              "040000-000192",
+              "060000-000193",
+              "040000-000194",
+              "060000-000195",
+              "040000-000196",
+              "reparatur konfektioniermaschine",
+              "austausch hydraulikaggregat",
+              "instandsetzung förderband",
+              "generalüberholung stanzautomat",
+              "reparatur kälteanlage",
+              "austausch antriebssteuerung"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "F3",
+        "title": "December costs parked in January, no accrual (cut-off)",
+        "detected": true,
+        "matched_by": [
+          {
+            "finding_id": "F-002",
+            "terms": [
+              "er901427",
+              "er901434"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "F4",
+        "title": "Payments split under the EUR 10,000 approval limit",
+        "detected": true,
+        "matched_by": [
+          {
+            "finding_id": "F-004",
+            "terms": [
+              "200007",
+              "sammel-200007"
+            ]
+          }
+        ]
+      }
+    ],
+    "decoys": [
+      {
+        "id": "D1",
+        "title": "EUR 480k machine purchase",
+        "flagged": false,
+        "flagged_by": [],
+        "mentioned_by": []
+      },
+      {
+        "id": "D2",
+        "title": "Nord Logistik vs Nordlicht Logistik near-duplicate vendors",
+        "flagged": false,
+        "flagged_by": [],
+        "mentioned_by": []
+      },
+      {
+        "id": "D3",
+        "title": "Vega Werkstoffe — new mid-year vendor",
+        "flagged": false,
+        "flagged_by": [],
+        "mentioned_by": []
+      },
+      {
+        "id": "D4",
+        "title": "Year-end volume bonuses to 22 customers",
+        "flagged": false,
+        "flagged_by": [],
+        "mentioned_by": []
+      },
+      {
+        "id": "D5",
+        "title": "EUR 220k Konzernumlage to Austrian parent",
+        "flagged": false,
+        "flagged_by": [],
+        "mentioned_by": []
+      },
+      {
+        "id": "D6",
+        "title": "Asset scrapped for EUR 1,200 at book value ~EUR 111,595",
+        "flagged": false,
+        "flagged_by": [],
+        "mentioned_by": []
+      },
+      {
+        "id": "D7",
+        "title": "Invoice AR502040 + credit note SG502041 (EUR 18,500)",
+        "flagged": false,
+        "flagged_by": [],
+        "mentioned_by": []
+      }
+    ],
+    "unmatched_findings": []
+  },
+  "timings_s": {
+    "checks": 0.0,
+    "analysis": 199.1,
+    "verification": 89.1,
+    "total": 288.5
+  },
+  "passed": true,
+  "verdict": "schemes 4/4 (min 4), decoys flagged 0 (max 0)"
+}
