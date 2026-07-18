@@ -7,3 +7,6 @@ Moved agent change-logging to AGENTS.md (plus CLAUDE.md and Copilot instructions
 ## 2026-07-18 15:45 CEST
 Un-ignored logs/agent-changes.log so the shared agent changelog is tracked in git.
 
+## 2026-07-18 15:47 CEST
+Stopped ignoring logs in .gitignore so agent and other log files stay committed with the repo.
+
