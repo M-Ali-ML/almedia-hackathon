@@ -149,9 +149,22 @@ export function FindingsTable({
                       </span>
                     ))}
                   </div>
-                  <div className="mt-1 line-clamp-3 text-slate-600">
+                  <div
+                    className={`mt-1 leading-6 text-slate-600 ${expanded === f.id ? '' : 'line-clamp-3'}`}
+                  >
                     {f.description}
                   </div>
+                  <button
+                    type="button"
+                    className="mt-1.5 text-xs font-semibold text-cyan-700 hover:text-cyan-900 hover:underline"
+                    aria-expanded={expanded === f.id}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setExpanded(expanded === f.id ? null : f.id)
+                    }}
+                  >
+                    {expanded === f.id ? 'Show less' : 'Show full description'}
+                  </button>
                 </td>
                 <td className="px-4 py-3 font-mono text-xs whitespace-nowrap text-slate-700">
                   {f.amount_eur != null

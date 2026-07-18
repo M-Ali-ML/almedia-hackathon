@@ -44,3 +44,12 @@ Added a pre-analysis header action and readable overlay that separates cited com
 
 ## 2026-07-18 17:59 CEST
 Fixed chat presentation with Markdown rendering, safe wrapping for long evidence identifiers, and compact source-linked response instructions. Hardened chat request cancellation and SSE parsing to avoid stale or incomplete streamed messages.
+
+## 2026-07-18 18:04 CEST
+Rebranded the frontend as AudiTrace with a new wordmark, favicon, typography, and navy-cyan visual system. Polished the upload, pipeline, findings, and chat surfaces while preserving the existing workflow and responsive behavior.
+
+## 2026-07-18 18:06 CEST
+Replaced the placeholder root README with concise AudiTrace setup instructions, an architecture and analysis-flow overview, the technology stack, and verification commands.
+
+## 2026-07-18 18:08 CEST
+Made finding descriptions expand with their citation rows and added an explicit show-full-description control so clamped audit explanations remain accessible.
