@@ -35,7 +35,8 @@ Human working notes for this project. **AI agents: do not read, edit, or add any
 
 ## 5. Test and iterate
 
-- [ ] Testing and re-iteration
+- [ ] Testing and re-iteration on the data we have.
+- [ ] Testing on the testing data will be provided later. 
 
 ## 6. Demo
 
@@ -44,7 +45,5 @@ Human working notes for this project. **AI agents: do not read, edit, or add any
 
 
 
-
 # Links
  - https://notebooklm.google.com/notebook/4241e5ed-243b-4948-a8b1-8134343c79b1
- 
