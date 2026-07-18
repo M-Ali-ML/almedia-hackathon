@@ -8,4 +8,5 @@ This is tasks for humans working on this prject don't interact with this or add 
     - design.md
     - architecure.md
 2. understanding of the data and what we need to do:
-    - Read the canvas
+    - Read the canvas html for the hackathon
+    - 
