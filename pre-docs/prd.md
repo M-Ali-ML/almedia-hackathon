@@ -11,12 +11,14 @@ Here is the Product Requirements Document (PRD) structured specifically for your
 ## 2. User Experience & UI (Frontend)
 **Tech Stack:** React and Tailwind CSS.
 **Design:** A highly simplified, single-page application.
+*   **Design Reference:** Use the provided screenshot only as a loose visual guideline. Keep the MVP minimal; matching every control or visual detail is out of scope.
 *   **File Upload:** A primary interface to upload the provided zip file containing the standardized accounting data.
 *   **Progress Indicators:** Visual states showing the pipeline progress (e.g., "Pre-analyzing", "Ingesting", "Analyzing").
 *   **Results Dashboard:** A table/list of rows displaying potential fraud cases.
-    *   **Row Details:** Each row will show a free-text description of the suspected fraud and a likelihood score.
+    *   **Row Identification:** Every result row must have a unique, visible ID so it can be referenced reliably in the UI and chat.
+    *   **Row Details:** Each row will show its ID, a free-text description of the suspected fraud, and a likelihood score.
     *   **Crucial Hackathon Feature - Citations:** Each fraud claim must explicitly cite where the evidence was found (specific files and rows) so auditors can verify it.
-    *   **Interactive Accordion:** Clicking a row expands an accordion containing a chat interface, allowing the user to ask the agent clarifying questions about that specific fraud finding.
+    *   **Row Chat:** Each row has a simple "Chat with AI" action that opens a chat panel scoped to that row. The selected row ID and context are passed automatically so the user can ask follow-up questions about that finding.
 
 ## 3. System Architecture (Backend & AI)
 **Tech Stack:** Python utilizing the AGUI protocol for seamless frontend/backend agent communication. 
