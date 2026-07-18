@@ -21,10 +21,6 @@ secrets/
 !.vscode/launch.json
 *.swp
 *.swo
-*~
-.cursor/*
-!.cursor/skills/
-!.cursor/skills/**
 
 # --- Python ---
 __pycache__/
