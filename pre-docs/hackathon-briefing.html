@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cortea Track — Audit Fraud Agent Briefing</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --surface: #161a21;
+    --surface-2: #1c212b;
+    --border: #2a3140;
+    --text: #e6e9ef;
+    --text-2: #a8b0bf;
+    --text-3: #6b7383;
+    --accent: #5b9dd9;
+    --danger: #e06c75;
+    --warning: #d9a75b;
+    --success: #7cbf7c;
+    --info: #5b9dd9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    font-size: 15px;
+  }
+  main { max-width: 1000px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 26px; margin: 0 0 8px; }
+  h2 { font-size: 20px; margin: 40px 0 8px; padding-top: 24px; border-top: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 24px 0 8px; }
+  p { margin: 8px 0; }
+  .muted { color: var(--text-2); }
+  .small { font-size: 13px; color: var(--text-3); }
+  code {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.9em;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+  }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 20px 0; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .stat .value { font-size: 22px; font-weight: 600; }
+  .stat .label { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+  .stat.danger .value { color: var(--danger); }
+  .stat.warning .value { color: var(--warning); }
+  .callout { border: 1px solid var(--border); border-left: 3px solid var(--info); background: var(--surface); border-radius: 6px; padding: 12px 16px; margin: 16px 0; }
+  .callout.danger { border-left-color: var(--danger); }
+  .callout.warning { border-left-color: var(--warning); }
+  .callout.success { border-left-color: var(--success); }
+  .callout.neutral { border-left-color: var(--text-3); }
+  .callout .title { font-weight: 600; margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--text-2); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  tr:last-child td { border-bottom: none; }
+  .table-wrap { border: 1px solid var(--border); border-radius: 8px; overflow-x: auto; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin: 12px 0; }
+  .card-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; }
+  .card-body { padding: 12px 16px; color: var(--text-2); }
+  .pill { font-size: 11px; color: var(--text-2); background: var(--surface-2); border-radius: 999px; padding: 2px 10px; white-space: nowrap; font-weight: 400; }
+  .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .cols-2 { grid-template-columns: 1fr; } }
+  strong { color: var(--text); }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 8px; background: var(--success); }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Cortea Track — Audit Fraud Agent Briefing</h1>
+<p class="muted">Challenge: build an interactive agent an auditor can use to uncover layered fraud in a ~20-document dossier (German + English), where <strong>every claim links to the exact document, page and passage</strong>. Judged on an unseen final dossier. Flagging clean items counts against you. Prize: Meta x Ray-Ban AI Glasses per member.</p>
+
+<div class="stats">
+  <div class="stat"><div class="value">36</div><div class="label">Files in sample dossier</div></div>
+  <div class="stat"><div class="value">~32.5k</div><div class="label">Ledger / journal rows</div></div>
+  <div class="stat danger"><div class="value">4</div><div class="label">Planted fraud schemes</div></div>
+  <div class="stat warning"><div class="value">7</div><div class="label">Decoys (penalty if flagged)</div></div>
+</div>
+
+<div class="callout danger">
+  <div class="title">The single most important strategic fact</div>
+  <code>data/info.md</code> is the answer key for the sample dossier only. Judging happens on a <strong>different final dossier</strong> with a regenerated scheme set. Anything hardcoded to Ratio Consulting, MV-U05, or specific amounts is worthless on judging day. Build <strong>generalizable pattern detectors</strong> (segregation-of-duties, capitalization policy, cut-off, threshold-splitting) that happen to catch these four — plus whatever else the final dossier contains.
+</div>
+
+<h2>1. What's actually in the dossier</h2>
+<p class="muted">The data is a GDPdU/GoBD export — the standardized German tax-audit data format (SAP-style semicolon-delimited text files, each folder described by an <code>index.xml</code> schema). This is exactly what a real German auditor receives from a client. Fictional company: Muster Verpackungen GmbH (packaging), fiscal year 2025.</p>
+
+<div class="table-wrap">
+<table>
+  <tr><th>Folder / file</th><th>Contents</th><th>Rows</th><th>Watch out for</th></tr>
+  <tr><td><strong>Sachkonten/</strong></td><td>Chart of accounts + full general ledger postings</td><td>43 + 20,258</td><td>The core dataset. User IDs, posting dates, document numbers, Zahlung/Rechnung types</td></tr>
+  <tr><td><strong>Kreditoren/</strong></td><td>Vendor master data + vendor (AP) postings</td><td>143 + 2,584</td><td>VAT IDs, vendor creation — cross-reference against master-data change log</td></tr>
+  <tr><td><strong>Debitoren/</strong></td><td>Customer master data + customer (AR) postings</td><td>160 + 3,749</td><td>Mostly context; decoys D4/D7 live here</td></tr>
+  <tr><td><strong>AV/</strong></td><td>Fixed asset register + asset postings</td><td>197 + 56</td><td>Asset names betray misclassified repairs (F2-type schemes)</td></tr>
+  <tr><td>Wareneingangsliste_2025.csv</td><td>Goods-receipt list</td><td>859</td><td>The "did we actually get anything?" check for every vendor invoice</td></tr>
+  <tr><td>Stammdatenaenderungen_2025.csv</td><td>Master-data change log with GEAENDERT_VON / GENEHMIGT_VON</td><td>20</td><td>Creator = approver → broken four-eyes principle</td></tr>
+  <tr><td>Berechtigungsauswertung_2025.xlsx</td><td>User permission matrix (who can post, pay, create vendors)</td><td>xlsx</td><td>Segregation-of-duties analysis</td></tr>
+  <tr><td>Fakturajournal_Januar_2026_Kreditoren.csv + Buchungen_Folgeperiode_2026.csv</td><td>January 2026 invoices / next-period postings</td><td>9 + 61</td><td>Invoice date vs. service date (LEISTUNGSDATUM) → cut-off testing</td></tr>
+  <tr><td>Saldenliste 2024/2025, OP-Listen, Abstimmung xlsx</td><td>Trial balances, open-item lists, subledger reconciliation</td><td>xlsx</td><td>Tie financial statements back to the ledger</td></tr>
+  <tr><td>Pruefungsplanung_JET_2025.docx</td><td>Audit planning memo — states the €10,000 two-signature threshold</td><td>docx</td><td>Control thresholds come from prose documents, not data files</td></tr>
+  <tr><td>PDFs (JA-Entwurf, IT-Bestätigung, Exportprotokoll)</td><td>Draft financial statements, IT completeness confirmation</td><td>pdf</td><td>Reported profit figure to reconcile against</td></tr>
+  <tr><td>Gesellschafterliste_Beteiligungen.csv</td><td>Shareholder / related-party list</td><td>6</td><td>Disclosed related parties are decoys, undisclosed ones are findings</td></tr>
+</table>
+</div>
+
+<div class="callout warning">
+  <div class="title">Data engineering gotchas (budget time for these)</div>
+  Latin-1 / Windows-1252 encoding (umlauts are mangled if read as UTF-8) · German number format (1.234,56) · DD.MM.YYYY dates · semicolon-delimited CSVs · quoted text files with schemas defined only in <code>index.xml</code> · mixed formats: txt, csv, xlsx, docx, pdf. A clean ingestion layer that normalizes all of this into one queryable store is the unglamorous half of winning.
+</div>
+
+<h2>2. The fraud taxonomy (from the sample answer key)</h2>
+<p class="muted">Four schemes, layered by difficulty. Each is really a <strong>reusable detection recipe</strong> — the final dossier will use different names and numbers but the same class of manipulation (purchasing / assets / cut-off / controls).</p>
+
+<div class="card">
+  <div class="card-header">F1 — Fake vendor, cash misappropriation (€248,000) <span class="pill">headline finding</span></div>
+  <div class="card-body">
+    <p>Shell vendor "Ratio Consulting GmbH" created mid-year, 5 round-amount "Beratung" invoices, all paid. Generalized recipe — a finding only earns top marks when <strong>four independent sources converge</strong>:</p>
+    <p>(1) new vendor created mid-year with no prior-year balance · (2) no goods receipt for any of its invoices · (3) creator = approver in the master-data change log · (4) the same user holds posting + payment-run + vendor-creation rights in the permission matrix. Contrast with decoy D3 (Vega Werkstoffe): also new mid-year, but four-eyes approval and real deliveries → clean.</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">F2 — Repairs capitalized as fixed assets (€150,800) <span class="pill">profit overstated</span></div>
+  <div class="card-body">
+    <p>Six repair bills booked as asset additions instead of expense account 670000. Recipe: scan asset register for repair-vocabulary names (Reparatur, Instandsetzung, Austausch, Generalüberholung), match acquisition postings to vendor invoices via document numbers, flag where invoice text describes maintenance but the debit hits an asset account. Decoy D1 (€480k machine with a real investment request) is the trap — large and round is not the signal, wording vs. account is.</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">F3 — December costs parked in January, no accrual (€192,000) <span class="pill">profit overstated</span></div>
+  <div class="card-body">
+    <p>Eight invoices with FAKTURADATUM in Jan 2026 but LEISTUNGSDATUM in Dec 2025, goods received in December ("Rechnung offen"), and no year-end accrual booked. Recipe: join next-period invoice journal ↔ goods-receipt list ↔ ledger accruals; flag received-not-accrued items. Subtlety: a legitimate €86,500 accrual for other December work exists — the anomaly is the missing accrual on these specific items, not accruals in general.</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">F4 — Payments split under the €10,000 approval limit (€39,040) <span class="pill">control breach, no misstatement</span></div>
+  <div class="card-body">
+    <p>Four same-day payments to one vendor, each just under €10,000 (9,780 / 9,820 / 9,750 / 9,690). Recipe: read the approval threshold from the planning memo (a prose docx — the agent must extract policy from documents, not just crunch numbers), then group payments by vendor + date and flag clusters of near-threshold amounts.</p>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat danger"><div class="value">€342,800</div><div class="label">Profit overstatement (F2 + F3)</div></div>
+  <div class="stat"><div class="value">€2.60m → €2.26m</div><div class="label">Reported vs. true profit</div></div>
+  <div class="stat danger"><div class="value">€248,000</div><div class="label">Cash stolen via fake vendor (F1)</div></div>
+</div>
+
+<h3>The 7 decoys — where teams will lose points</h3>
+<div class="table-wrap">
+<table>
+  <tr><th>Decoy</th><th>Why it looks suspicious</th><th>Why it's clean</th></tr>
+  <tr><td><span class="dot"></span>D1 · €480k machine</td><td>Large, round amount</td><td>Real investment request IA-2025-04 + real asset</td></tr>
+  <tr><td><span class="dot"></span>D2 · Nord vs. Nordlicht Logistik</td><td>Near-duplicate vendor names</td><td>Different VAT-IDs, both have real goods receipts</td></tr>
+  <tr><td><span class="dot"></span>D3 · Vega Werkstoffe</td><td>New vendor mid-year (like F1)</td><td>Four-eyes approval + real deliveries</td></tr>
+  <tr><td><span class="dot"></span>D4 · Year-end volume bonuses</td><td>22 customers credited at year-end</td><td>Documented rebate program, booked correctly</td></tr>
+  <tr><td><span class="dot"></span>D5 · €220k Konzernumlage</td><td>Related-party payment to Austrian parent</td><td>Disclosed in shareholder list, arm's length</td></tr>
+  <tr><td><span class="dot"></span>D6 · Asset scrapped for €1,200</td><td>Book value ~€111,595</td><td>Documented scrapping, not an under-value related-party sale</td></tr>
+  <tr><td><span class="dot"></span>D7 · Invoice + credit note €18,500</td><td>Same-period reversal</td><td>Revenue-neutral normal correction</td></tr>
+</table>
+</div>
+
+<div class="callout">
+  <div class="title">What this means for your product</div>
+  The judging function is effectively precision-weighted: F1 found by combining sources = top marks, F2/F3 = core, F4 = bonus, any decoy accused = penalty. So the agent needs a <strong>confidence / evidence-strength model</strong> and an explicit "innocent explanation checked and ruled out" step per finding — not just an anomaly firehose.
+</div>
+
+<h2>3. Market research — Cortea (the track sponsor)</h2>
+<div class="stats">
+  <div class="stat"><div class="value">€12M</div><div class="label">Seed round (June 2026)</div></div>
+  <div class="stat"><div class="value">2024</div><div class="label">Founded, Berlin</div></div>
+  <div class="stat"><div class="value">4,000+</div><div class="label">Audit reports processed last season</div></div>
+  <div class="stat"><div class="value">UK · DE · US</div><div class="label">Expansion markets</div></div>
+</div>
+<p>Cortea builds the <strong>"AI quality layer" for audit firms</strong> — Audit Quality Agents that review audit reports, financial statements, disclosure notes and workpapers before sign-off, cross-checking figures and supporting documentation for inconsistencies. Founded by Florian Neumann (ex-CTO of audibene, scaled 20 → 2,000 people) and Philipp Hövelmann (ex-KPMG auditor, early N26 / Banking Circle, engineering lead at Finoa). Team includes licensed CPAs and accredited IT auditors.</p>
+
+<div class="table-wrap">
+<table>
+  <tr><th>Cortea principle</th><th>What it means for judging</th></tr>
+  <tr><td><strong>"White Box" AI</strong></td><td>"In a regulated world, results without a trail are useless" — a verifiable logic path from data to decision. Your evidence-linking UX is the product, not a feature.</td></tr>
+  <tr><td><strong>Auditor in control</strong></td><td>AI flags, drafts, analyses — the auditor reviews, approves, signs. Design for review workflow (accept / reject / annotate findings), not an autonomous verdict machine.</td></tr>
+  <tr><td><strong>Standards-grounded</strong></td><td>Everything aligned to ISA 315, ISA 240, IDW, HGB. Framing findings in audit language (management override, cut-off assertion, segregation of duties) will land with judges.</td></tr>
+  <tr><td><strong>German market DNA</strong></td><td>HGB / IDW / GDPdU-native. Handling the German data format and terminology fluently is table stakes for them.</td></tr>
+</table>
+</div>
+
+<div class="callout success">
+  <div class="title">Read-through</div>
+  This challenge is essentially Cortea's product thesis as a weekend exercise. The winning demo looks like a mini Cortea: fraud detection where every number is one click away from its source passage, with the human auditor making the final call. It is also a recruiting funnel — impressing them has value beyond the glasses.
+</div>
+
+<h2>4. Competitive landscape (what "state of the art" looks like)</h2>
+<p class="muted">Useful both to steal proven interaction patterns and to know what judges consider baseline vs. impressive.</p>
+
+<div class="table-wrap">
+<table>
+  <tr><th>Player</th><th>Category</th><th>Approach worth stealing</th></tr>
+  <tr><td><strong>MindBridge</strong></td><td>Full-population risk scoring (closest analog)</td><td>Ensemble of ~28 rules + statistical + ML tests scores 100% of GL transactions; auditors drill into per-test "control point" results and build risk-stratified samples. Steal: named deterministic tests + a risk-score rollup per finding.</td></tr>
+  <tr><td><strong>DataSnipper</strong></td><td>Excel-native evidence matching</td><td>Every extraction is a "snip" visually anchored to the exact spot in the source PDF. Steal: click a number → the source document opens highlighted at the passage. This is the traceability bar.</td></tr>
+  <tr><td><strong>Cortea</strong></td><td>AI quality layer / disclosure &amp; workpaper review</td><td>Finding → linked source material → review workflow with human sign-off. This is the judge's mental model.</td></tr>
+  <tr><td><strong>Fieldguide</strong></td><td>End-to-end AI audit platform</td><td>Engagement-level workflow; practitioners and agents collaborate. Less relevant for the weekend scope.</td></tr>
+  <tr><td><strong>Trullion</strong></td><td>Document-to-ledger traceability (ASC 606/842)</td><td>Bidirectional links between source docs and accounting treatment.</td></tr>
+  <tr><td><strong>CaseWare / TeamMate / IDEA</strong></td><td>Legacy incumbents</td><td>What the market is migrating away from — clunky UI is the incumbent weakness everyone attacks.</td></tr>
+</table>
+</div>
+<p class="muted">Gap none of them fill in a hackathon-demo form: a conversational agent that autonomously runs cross-document forensic procedures, explains its reasoning in audit language, and cites document + row + passage for every claim. That gap is your product.</p>
+
+<h2>5. What to build — inputs for your PRD</h2>
+<div class="cols-2">
+  <div class="card">
+    <div class="card-header">Layer 1 — Deterministic forensic engine</div>
+    <div class="card-body">
+      Ingestion normalizes all formats into one queryable store (encoding, dates, decimals, index.xml schemas). Then a library of named, generalizable tests: three-way match (invoice ↔ goods receipt ↔ payment), new-vendor risk profile, SoD / four-eyes violations, capitalization-vs-expense wording check, cut-off (service date vs. posting period vs. accruals), threshold-split clustering, Benford / round-amount stats, related-party vs. disclosure list. Deterministic = reliable on the unseen final dossier.
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">Layer 2 — Agent + evidence-linked UI</div>
+    <div class="card-body">
+      An LLM agent that runs the test library, reads the prose documents (extracts policies like the €10k threshold), combines signals into findings, and drafts audit-language narratives. UI: findings ranked by evidence strength, each claim clickable through to the exact file, row or passage (highlighted); auditor accepts / rejects / annotates; chat for follow-up questions ("show me all payments to this vendor"). No number without a source — enforce it in the data model, not the prompt.
+    </div>
+  </div>
+</div>
+
+<h3>Differentiators to prioritize (in order)</h3>
+<div class="table-wrap">
+<table>
+  <tr><th>#</th><th>Differentiator</th><th>Why it wins</th></tr>
+  <tr><td>1</td><td>Evidence chains: every claim → doc + row/passage, one click</td><td>The literal judging criterion and Cortea's core thesis</td></tr>
+  <tr><td>2</td><td>Multi-source corroboration score per finding</td><td>Top marks require combining 4 sources for the F1-class finding</td></tr>
+  <tr><td>3</td><td>Explicit decoy handling — "checked, innocent because…"</td><td>Precision is scored; showing ruled-out items proves discipline</td></tr>
+  <tr><td>4</td><td>Policy extraction from prose docs (docx/pdf)</td><td>Separates you from teams who only crunch the CSVs</td></tr>
+  <tr><td>5</td><td>Financial-statement impact rollup (reported vs. corrected profit)</td><td>Turns findings into an audit conclusion — the "so what"</td></tr>
+  <tr><td>6</td><td>Bilingual DE/EN handling</td><td>Table stakes but easy to fumble</td></tr>
+</table>
+</div>
+
+<div class="callout neutral">
+  <div class="title">De-risking the final dossier</div>
+  Regenerate confidence before the deadline: run the whole pipeline end-to-end on the sample dossier with the answer key hidden, measure precision/recall against <code>info.md</code>, and use the Slack auditor to validate borderline findings. The generator is seeded and adjustable — expect the same scheme families (purchasing, assets, cut-off, controls) with different entities and amounts.
+</div>
+
+<p class="small">Sources: hackathon brief + sample answer key in <code>data/</code>, dossier extracted from Uebungsdaten_Muster_Verpackungen.zip, cortea.ai, EU-Startups (Jun 2026 seed announcement), MindBridge JET methodology papers, DataSnipper / Fieldguide / audit-automation market roundups (2026).</p>
+
+</main>
+</body>
+</html>
