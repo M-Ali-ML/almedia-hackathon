@@ -52,6 +52,11 @@ class DocumentInfo(BaseModel):
     row_count: int | None = None
 
 
+class ScoreFactor(BaseModel):
+    label: str
+    points: int
+
+
 # ---------------------------------------------------------------------------
 # Findings
 # ---------------------------------------------------------------------------
@@ -68,6 +73,7 @@ class Finding(BaseModel):
     status: Literal["finding", "needs_review"] = "finding"
     rule_ids: list[str] = Field(default_factory=list)
     rule_hit_ids: list[str] = Field(default_factory=list)
+    score_factors: list[ScoreFactor] = Field(default_factory=list)
     citations: list[Citation] = Field(min_length=1)
 
 

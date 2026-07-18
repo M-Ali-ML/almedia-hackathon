@@ -1,16 +1,58 @@
 import { Fragment, useState } from 'react'
-import type { Citation, Finding } from '../types'
+import type { Citation, Finding, RuleHit } from '../types'
 
-function LikelihoodChip({ value }: { value: number }) {
+function LikelihoodChip({ finding, ruleHits }: { finding: Finding; ruleHits: RuleHit[] }) {
+  const value = finding.likelihood
   const cls =
     value >= 70
       ? 'bg-red-100 text-red-700'
       : value >= 40
         ? 'bg-amber-100 text-amber-700'
         : 'bg-emerald-100 text-emerald-700'
+  const relatedHits = ruleHits.filter((hit) => finding.rule_hit_ids.includes(hit.id))
+  const signals = [...new Set(relatedHits.flatMap((hit) => hit.signals))].slice(0, 6)
+  const factors = finding.score_factors ?? []
   return (
-    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${cls}`}>
-      {value}%
+    <span className="group relative inline-flex" tabIndex={0}>
+      <span
+        className={`inline-block cursor-help rounded-full px-2.5 py-0.5 text-xs font-semibold ${cls}`}
+        aria-label={`Evidence strength ${value} percent`}
+      >
+        {value}%
+      </span>
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 hidden w-80 -translate-x-1/2 rounded-xl bg-slate-950 p-3 text-left text-xs font-normal text-white shadow-xl group-hover:block group-focus:block">
+        <span className="block font-semibold">Evidence strength: {value}/100</span>
+        {factors.length > 0 ? (
+          <span className="mt-2 block space-y-1">
+            {factors.map((factor, index) => (
+              <span key={`${factor.label}-${index}`} className="flex justify-between gap-3">
+                <span className="text-slate-300">{factor.label}</span>
+                <span className={factor.points < 0 ? 'text-amber-300' : 'text-emerald-300'}>
+                  {factor.points > 0 ? '+' : ''}
+                  {factor.points}
+                </span>
+              </span>
+            ))}
+          </span>
+        ) : (
+          <span className="mt-2 block text-slate-300">
+            Legacy model-assessed score. Re-run this batch to see deterministic factors.
+          </span>
+        )}
+        {signals.length > 0 && (
+          <span className="mt-2 block border-t border-slate-700 pt-2">
+            <span className="font-semibold text-slate-200">Signals</span>
+            {signals.map((signal) => (
+              <span key={signal} className="mt-1 block text-slate-300">
+                • {signal}
+              </span>
+            ))}
+          </span>
+        )}
+        <span className="mt-2 block border-t border-slate-700 pt-2 text-[10px] text-slate-400">
+          This is evidence strength, not a statistical probability of fraud.
+        </span>
+      </span>
     </span>
   )
 }
@@ -51,10 +93,12 @@ function CitationRow({ citation, batchId }: { citation: Citation; batchId: strin
 export function FindingsTable({
   batchId,
   findings,
+  ruleHits,
   onChat,
 }: {
   batchId: string
   findings: Finding[]
+  ruleHits: RuleHit[]
   onChat: (f: Finding) => void
 }) {
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -68,14 +112,14 @@ export function FindingsTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-xs font-semibold tracking-wide text-slate-500 uppercase">
             <th className="px-4 py-3">ID</th>
             <th className="px-4 py-3">Finding</th>
             <th className="px-4 py-3">Impact</th>
-            <th className="px-4 py-3">Likelihood</th>
+            <th className="px-4 py-3">Evidence strength</th>
             <th className="px-4 py-3">Evidence</th>
             <th className="px-4 py-3"></th>
           </tr>
@@ -115,7 +159,7 @@ export function FindingsTable({
                     : '—'}
                 </td>
                 <td className="px-4 py-3">
-                  <LikelihoodChip value={f.likelihood} />
+                  <LikelihoodChip finding={f} ruleHits={ruleHits} />
                 </td>
                 <td className="px-4 py-3 text-xs text-slate-500">
                   {f.citations.length} source{f.citations.length === 1 ? '' : 's'}{' '}

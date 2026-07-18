@@ -3,6 +3,7 @@ import { getBatch, uploadZip } from './api'
 import { ChatPanel } from './components/ChatPanel'
 import { FindingsTable } from './components/FindingsTable'
 import { Pipeline } from './components/Pipeline'
+import { PreAnalysisOverlay } from './components/PreAnalysisOverlay'
 import { UploadCard } from './components/UploadCard'
 import type { BatchResult, Finding } from './types'
 
@@ -11,12 +12,14 @@ export default function App() {
   const [batch, setBatch] = useState<BatchResult | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [chatFinding, setChatFinding] = useState<Finding | null>(null)
+  const [preAnalysisOpen, setPreAnalysisOpen] = useState(false)
 
   const handleUpload = useCallback(async (file: File) => {
     setUploadError(null)
     try {
       const status = await uploadZip(file)
       setBatch(null)
+      setPreAnalysisOpen(false)
       setBatchId(status.batch_id)
     } catch (err) {
       setUploadError(String(err instanceof Error ? err.message : err))
@@ -60,16 +63,35 @@ export default function App() {
             </p>
           </div>
           {batchId && (
-            <button
-              onClick={() => {
-                setBatchId(null)
-                setBatch(null)
-                setChatFinding(null)
-              }}
-              className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800"
-            >
-              New analysis
-            </button>
+            <div className="flex items-center gap-2">
+              {batch?.global_context && (
+                <button
+                  type="button"
+                  onClick={() => setPreAnalysisOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800"
+                  aria-label="Open pre-analysis overview"
+                  title="Pre-analysis overview"
+                >
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                    <path d="M4 5.5h16v13H4z" />
+                    <path d="M7 15l3-3 2.5 2 4.5-5" />
+                    <path d="M7 8h3" />
+                  </svg>
+                  Pre-analysis
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setBatchId(null)
+                  setBatch(null)
+                  setChatFinding(null)
+                  setPreAnalysisOpen(false)
+                }}
+                className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800"
+              >
+                New analysis
+              </button>
+            </div>
           )}
         </div>
       </header>
@@ -102,6 +124,7 @@ export default function App() {
             <FindingsTable
               batchId={batch.batch_id}
               findings={batch.findings}
+              ruleHits={batch.rule_hits}
               onChat={setChatFinding}
             />
           </div>
@@ -110,6 +133,9 @@ export default function App() {
 
       {chatFinding && batchId && (
         <ChatPanel batchId={batchId} finding={chatFinding} onClose={() => setChatFinding(null)} />
+      )}
+      {preAnalysisOpen && batch && (
+        <PreAnalysisOverlay batch={batch} onClose={() => setPreAnalysisOpen(false)} />
       )}
     </div>
   )

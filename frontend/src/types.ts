@@ -20,6 +20,7 @@ export interface Finding {
   status: 'finding' | 'needs_review'
   rule_ids: string[]
   rule_hit_ids: string[]
+  score_factors: { label: string; points: number }[]
   citations: Citation[]
 }
 

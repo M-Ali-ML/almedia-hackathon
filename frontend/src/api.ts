@@ -20,6 +20,7 @@ export async function getBatch(batchId: string): Promise<BatchResult> {
       status: finding.status ?? 'finding',
       rule_ids: finding.rule_ids ?? [],
       rule_hit_ids: finding.rule_hit_ids ?? [],
+      score_factors: finding.score_factors ?? [],
       citations: finding.citations ?? [],
     })),
   }

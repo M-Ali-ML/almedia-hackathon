@@ -35,3 +35,9 @@ Fixed the findings screen crash by normalizing missing detection fields in legac
 
 ## 2026-07-18 17:34 CEST
 Shortened new agent finding descriptions, clamped legacy narratives in the findings table, and added clickable citation links that open the original uploaded source files.
+
+## 2026-07-18 17:41 CEST
+Replaced model-selected likelihoods with deterministic evidence-strength scores and added an on-hover breakdown of rule strength, corroboration, source breadth, counter-evidence deductions, and underlying signals.
+
+## 2026-07-18 17:50 CEST
+Added a pre-analysis header action and readable overlay that separates cited company context, K1-K7 analysis readiness, and the source-linked ingested data inventory.

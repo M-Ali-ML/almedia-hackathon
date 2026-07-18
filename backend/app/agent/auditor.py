@@ -34,7 +34,7 @@ from pydantic_ai.run import AgentRunResult
 from pydantic_ai.ui import StateDeps
 
 from ..ingestion import schema_overview
-from ..models import AnalysisReport, Citation, Finding, GlobalContext, RuleHit
+from ..models import AnalysisReport, Citation, Finding, GlobalContext, RuleHit, ScoreFactor
 from .. import storage
 
 logger = logging.getLogger(__name__)
@@ -369,6 +369,44 @@ def chat_agent() -> Agent[AuditDeps, str]:
     return agent
 
 
+def _score_rule_hits(rule_hits: list[RuleHit]) -> tuple[int, list[ScoreFactor]]:
+    """Turn deterministic evidence into an auditable evidence-strength score."""
+    strongest = max(rule_hits, key=lambda hit: hit.risk_score)
+    distinct_rules = {hit.rule_id for hit in rule_hits}
+    evidence_documents = {c.document_id for hit in rule_hits for c in hit.evidence}
+    counter_documents = {c.document_id for hit in rule_hits for c in hit.counter_evidence}
+    corroboration_bonus = min(max(len(distinct_rules) - 1, 0) * 3, 6)
+    source_bonus = min(max(len(evidence_documents) - 1, 0) * 2, 6)
+    counter_penalty = min(len(counter_documents) * 3, 9)
+    raw_score = strongest.risk_score + corroboration_bonus + source_bonus - counter_penalty
+    score = max(0, min(raw_score, 100))
+    factors = [ScoreFactor(label=f"Strongest detector ({strongest.rule_id})", points=strongest.risk_score)]
+    if corroboration_bonus:
+        factors.append(
+            ScoreFactor(
+                label=f"Corroboration from {len(distinct_rules)} independent rules",
+                points=corroboration_bonus,
+            )
+        )
+    if source_bonus:
+        factors.append(
+            ScoreFactor(
+                label=f"Evidence across {len(evidence_documents)} source documents",
+                points=source_bonus,
+            )
+        )
+    if counter_penalty:
+        factors.append(
+            ScoreFactor(
+                label=f"Counter-evidence in {len(counter_documents)} source documents",
+                points=-counter_penalty,
+            )
+        )
+    if raw_score > 100:
+        factors.append(ScoreFactor(label="Score capped at 100", points=100 - raw_score))
+    return score, factors
+
+
 async def run_analysis(batch_id: str, rule_hits: list[RuleHit]) -> list[Finding]:
     deps = StateDeps(
         AuditState(batch_id=batch_id, rule_hits=[h.model_dump(mode="json") for h in rule_hits])
@@ -381,17 +419,21 @@ async def run_analysis(batch_id: str, rule_hits: list[RuleHit]) -> list[Finding]
         deps=deps,
     )
     findings: list[Finding] = []
+    hits_by_id = {hit.id: hit for hit in rule_hits}
     for i, f in enumerate(result.output.findings, start=1):
+        contributing_hits = [hits_by_id[hit_id] for hit_id in f.rule_hit_ids]
+        score, score_factors = _score_rule_hits(contributing_hits)
         findings.append(
             Finding(
                 id=f"F-{i:03d}",
                 title=f.title,
                 description=f.description,
-                likelihood=f.likelihood,
+                likelihood=score,
                 amount_eur=f.amount_eur,
                 status=f.status,
                 rule_ids=f.rule_ids,
                 rule_hit_ids=f.rule_hit_ids,
+                score_factors=score_factors,
                 citations=f.citations,
             )
         )
@@ -399,7 +441,7 @@ async def run_analysis(batch_id: str, rule_hits: list[RuleHit]) -> list[Finding]
             "[%s] finding %s likelihood=%s amount=%s — %s",
             batch_id,
             findings[-1].id,
-            f.likelihood,
+            findings[-1].likelihood,
             f.amount_eur,
             _snip(f.title, 80),
         )
@@ -474,18 +516,20 @@ def fallback_findings(rule_hits: list[RuleHit], minimum_score: int = 75) -> list
                     seen.add(key)
                     citations.append(citation)
         primary = max(hits, key=lambda h: h.risk_score)
+        score, score_factors = _score_rule_hits(hits)
         findings.append(
             Finding(
                 id=f"F-{i:03d}",
                 title=primary.title,
                 description=" ".join(hit.summary for hit in hits),
-                likelihood=max(hit.risk_score for hit in hits),
+                likelihood=score,
                 amount_eur=max(
                     (hit.amount_eur for hit in hits if hit.amount_eur is not None), default=None
                 ),
                 status="needs_review",
                 rule_ids=sorted({hit.rule_id for hit in hits}),
                 rule_hit_ids=[hit.id for hit in hits],
+                score_factors=score_factors,
                 citations=citations,
             )
         )
