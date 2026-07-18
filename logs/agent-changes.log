@@ -1,0 +1,9 @@
+# Agent change log — auto-appended by any coding agent per AGENTS.md.
+# One entry per coherent code change set.
+
+## 2026-07-18 15:44 CEST
+Moved agent change-logging to AGENTS.md (plus CLAUDE.md and Copilot instructions) so any coding agent appends to logs/agent-changes.log, not only Cursor.
+
+## 2026-07-18 15:45 CEST
+Un-ignored logs/agent-changes.log so the shared agent changelog is tracked in git.
+

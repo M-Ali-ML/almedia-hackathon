@@ -22,7 +22,9 @@ secrets/
 *.swp
 *.swo
 *~
-.cursor/
+.cursor/*
+!.cursor/skills/
+!.cursor/skills/**
 
 # --- Python ---
 __pycache__/
@@ -101,8 +103,10 @@ coverage/
 *.local
 
 # --- Logs & temp ---
-logs/
+logs/*
+!logs/agent-changes.log
 *.log
+!logs/agent-changes.log
 tmp/
 temp/
 *.tmp
