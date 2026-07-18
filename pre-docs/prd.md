@@ -11,7 +11,6 @@ Here is the Product Requirements Document (PRD) structured specifically for your
 ## 2. User Experience & UI (Frontend)
 **Tech Stack:** React and Tailwind CSS.
 **Design:** A highly simplified, single-page application.
-*   **Design Reference:** Use the provided screenshot only as a loose visual guideline. Keep the MVP minimal; matching every control or visual detail is out of scope.
 *   **File Upload:** A primary interface to upload the provided zip file containing the standardized accounting data.
 *   **Progress Indicators:** Visual states showing the pipeline progress (e.g., "Pre-analyzing", "Ingesting", "Analyzing").
 *   **Results Dashboard:** A table/list of rows displaying potential fraud cases.
