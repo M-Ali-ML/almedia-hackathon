@@ -4,6 +4,8 @@
         upload.zip          original upload
         extracted/          unzipped dossier
         dossier.duckdb      normalized store
+        global_context.json reusable cited dossier facts
+        rule_hits.json      deterministic K1-K7 candidates
         status.json         BatchStatus
         result.json         BatchResult (documents, context, findings)
 """

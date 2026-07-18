@@ -54,3 +54,32 @@ Phase 5 judging-day UX: added review (accept/reject/annotate), evidence-viewer, 
 ## 2026-07-18 17:58 CEST
 Renamed the app from Vouch to AuditTrace across README, FastAPI title, and frontend branding.
 
+## 2026-07-18 17:22 CEST (tony-branch)
+Added a data-driven K1–K7 detection stage with cited rule hits, mandatory agent dispositions, high-confidence fallback findings, exact citation checks, restricted SQL, and minimal rule/status UI indicators so ingested dossiers produce actionable fraud candidates.
+
+## 2026-07-18 17:26 CEST
+Fixed the findings screen crash by normalizing missing detection fields in legacy batch responses and safely rendering findings without `rule_ids`.
+
+## 2026-07-18 17:34 CEST
+Shortened new agent finding descriptions, clamped legacy narratives in the findings table, and added clickable citation links that open the original uploaded source files.
+
+## 2026-07-18 17:41 CEST
+Replaced model-selected likelihoods with deterministic evidence-strength scores and added an on-hover breakdown of rule strength, corroboration, source breadth, counter-evidence deductions, and underlying signals.
+
+## 2026-07-18 17:50 CEST
+Added a pre-analysis header action and readable overlay that separates cited company context, K1-K7 analysis readiness, and the source-linked ingested data inventory.
+
+## 2026-07-18 17:59 CEST
+Fixed chat presentation with Markdown rendering, safe wrapping for long evidence identifiers, and compact source-linked response instructions. Hardened chat request cancellation and SSE parsing to avoid stale or incomplete streamed messages.
+
+## 2026-07-18 18:04 CEST
+Rebranded the frontend as AudiTrace with a new wordmark, favicon, typography, and navy-cyan visual system. Polished the upload, pipeline, findings, and chat surfaces while preserving the existing workflow and responsive behavior.
+
+## 2026-07-18 18:06 CEST
+Replaced the placeholder root README with concise AudiTrace setup instructions, an architecture and analysis-flow overview, the technology stack, and verification commands.
+
+## 2026-07-18 18:08 CEST
+Made finding descriptions expand with their citation rows and added an explicit show-full-description control so clamped audit explanations remain accessible.
+
+## 2026-07-18 18:20 CEST (combined branch)
+Merged tony-branch into user-stories on the `combined` branch: kept the user-stories backend (generalizable checks/ library, verifier pass, eval harness, review/evidence/impact endpoints, gpt-5.6-sol) as the trunk and dropped the redundant detection/ K1–K7 module; layered in tony's frontend polish — AudiTrace branding/header, PreAnalysisOverlay (adapted to the checks/verifier data model), markdown chat, and the /documents/{id}/file source-file endpoint.

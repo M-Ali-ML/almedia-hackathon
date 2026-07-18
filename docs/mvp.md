@@ -4,7 +4,7 @@ Context document for later work. Describes what exists after the MVP build, how 
 
 ## What it does
 
-Upload a GDPdU dossier ZIP → everything is normalized into one DuckDB database → one Pydantic AI auditor agent explores it with a read-only SQL tool → findings with citations appear in a React single-page UI → each finding has a "Chat with AI" panel scoped to that finding (AG-UI protocol, streamed).
+Upload a GDPdU dossier ZIP → everything is normalized into one DuckDB database → deterministic K1–K7 procedures generate evidence-backed investigation candidates → one Pydantic AI auditor verifies, dismisses, or combines those candidates → cited findings appear in a React single-page UI → each finding has a scoped "Chat with AI" panel (AG-UI protocol, streamed).
 
 ```mermaid
 flowchart LR
@@ -12,7 +12,9 @@ flowchart LR
     API --> ING[Ingestion]
     ING -->|"tables + document_texts with provenance"| DB[(DuckDB_per_batch)]
     API --> CTX[Context_agent]
-    CTX -->|"global_context.json"| AGENT[Auditor_agent]
+    CTX -->|"global_context.json"| RULES[K1-K7_detectors]
+    DB --> RULES
+    RULES -->|"rule_hits.json"| AGENT[Auditor_agent]
     AGENT -->|"run_sql / read_document"| DB
     AGENT -->|"findings with citations"| UI
     UI -->|"POST /api/chat (AG-UI SSE)"| AGENT
@@ -23,6 +25,7 @@ flowchart LR
 - `backend/` — Python 3.12, managed with `uv` (`uv sync`, `uv run …`)
   - `app/models.py` — all shared contracts (see below)
   - `app/ingestion/` — ZIP → DuckDB (`pipeline.py`) + German-format normalization (`normalize.py`)
+  - `app/detection/` — K1–K7 candidate procedures, ranking, cited evidence, and skipped-check reporting
   - `app/agent/auditor.py` — the single agent (analysis + chat + context extraction)
   - `app/storage.py` — batch directory layout
   - `app/main.py` — FastAPI routes
@@ -47,9 +50,9 @@ Model is `openai:gpt-5.6-sol` by default, overridable via `AUDITOR_MODEL` (any p
 ## Batch lifecycle & storage
 
 One directory per upload under `backend/data/batches/{batch_id}/` (gitignored):
-`upload.zip`, `extracted/`, `dossier.duckdb`, `global_context.json`, `status.json`, `result.json`.
+`upload.zip`, `extracted/`, `dossier.duckdb`, `global_context.json`, `rule_hits.json`, `status.json`, `result.json`.
 
-Pipeline stages (persisted in `status.json`, polled by the UI): `queued → extracting → ingesting → building_context → analyzing → done | error`.
+Pipeline stages (persisted in `status.json`, polled by the UI): `queued → extracting → ingesting → building_context → detecting → analyzing → done | error`.
 
 ## Data model & provenance rules
 
@@ -71,7 +74,8 @@ Provenance invariants — the basis of "no number without a source":
 ## Contracts (`backend/app/models.py`, mirrored in `frontend/src/types.ts`)
 
 - `Citation {document_id, file, table?, rows?, sheet?, page?, passage?, excerpt?}`
-- `Finding {id ("F-001"…), title, description, likelihood 0-100, amount_eur?, citations[] (min 1 — enforced by the schema)}`
+- `RuleHit {id, rule_id K1-K7, subject, risk_score, signals, evidence, counter_evidence, missing_evidence}` — an investigation candidate, not a fraud conclusion
+- `Finding {id ("F-001"…), title, description, likelihood 0-100, status, rule_ids, rule_hit_ids, amount_eur?, citations[]}`
 - `GlobalContext {items: [{kind: company_fact|policy|terminology|document_relationship, statement, citations[]}]}`
 - `BatchStatus {batch_id, stage, detail?, error?}` / `BatchResult {batch_id, status, documents, global_context?, findings}`
 
@@ -86,13 +90,13 @@ Provenance invariants — the basis of "no number without a source":
 One general agent, three uses (same tools, same instructions builder):
 
 - **Context agent** — one structured call over `document_texts` → `global_context.json` (facts, policies like approval thresholds, terminology; explicitly *no* fraud conclusions).
-- **Analysis run** — `run_analysis(batch_id)`: structured output `AnalysisReport`, primed with generic JET methodology only (never with known scheme names, entities, or the sample answer key), schema overview and global context in the instructions. Tools: `run_sql` (read-only DuckDB, 200-row cap, must select `_row_id` to cite) and `read_document`. An output validator rejects citations to non-existent tables (anti-hallucination net); the DuckDB connection is opened `read_only=True`.
+- **Analysis run** — `run_analysis(batch_id, rule_hits)`: the agent must disposition every candidate as `finding`, `dismissed`, or `needs_review`, then merge related candidates into cited findings. Runtime prompts never contain known entities or the sample answer key. The SQL tool accepts only internal `SELECT`/CTE queries. Citation validation checks table/document identity, physical rows, prose references, and excerpts. If model investigation fails or returns nothing, high-confidence deterministic candidates remain visible as `needs_review` findings.
 - **Chat agent** — same tools, plain-text streamed output, finding context injected from AG-UI state.
 
 ## Verified
 
-`scripts/smoke_test.py` (scripted `FunctionModel`, sample dossier): 29 documents ingested with zero warnings; analysis produced a `Finding` whose citation (`table` + `_row_id`) was re-queried and matched the excerpt; AG-UI chat streamed a full `RUN_STARTED → TEXT_MESSAGE_* → RUN_FINISHED` event sequence through `/api/chat`. A live LLM run needs `OPENAI_API_KEY`.
+`scripts/smoke_test.py` (scripted `FunctionModel`, sample dossier): 29 documents ingest with zero warnings; all K1–K7 detectors execute; K1–K5 produce candidates; analysis produces a finding whose citation is re-queried and matched; AG-UI chat streams a full event sequence through `/api/chat`. A live LLM run needs `OPENAI_API_KEY`.
 
 ## Deliberate limitations (see docs/roadmap.md)
 
-No deterministic test library, no verifier agent, no accept/reject workflow, no evidence-viewer highlighting, no financial-impact rollup, no multi-source corroboration scoring, no OCR, no auth, single-user concurrency only. XLSX sheets with decorative header rows land as loosely-typed tables (usable, not pretty). Chat history is client-side only.
+No second verifier agent, accept/reject workflow, evidence-viewer highlighting, financial-impact rollup, OCR, auth, or multi-user concurrency. K1–K7 are challenge-schema procedures and will need tuning against additional same-shaped dossiers. XLSX sheets with decorative header rows remain loosely typed. Chat history is client-side only.

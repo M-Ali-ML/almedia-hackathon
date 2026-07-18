@@ -14,6 +14,7 @@ load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, UploadFile  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.responses import FileResponse  # noqa: E402
 from pydantic_ai.ui import StateDeps  # noqa: E402
 from pydantic_ai.ui.ag_ui import AGUIAdapter  # noqa: E402
 
@@ -144,6 +145,22 @@ async def get_documents(batch_id: str) -> list[DocumentInfo]:
     if result is None:
         raise HTTPException(status_code=404, detail="Unknown batch")
     return result.documents
+
+
+@app.get("/api/batches/{batch_id}/documents/{document_id}/file")
+async def get_document_file(batch_id: str, document_id: str) -> FileResponse:
+    """Open the original uploaded file behind a citation."""
+    result = storage.load_result(batch_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Unknown batch")
+    document = next((doc for doc in result.documents if doc.document_id == document_id), None)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Unknown document")
+    extract_dir = (storage.batch_dir(batch_id) / "extracted").resolve()
+    path = (extract_dir / document.file).resolve()
+    if not path.is_relative_to(extract_dir) or not path.is_file():
+        raise HTTPException(status_code=404, detail="Source file not found")
+    return FileResponse(path)
 
 
 @app.post("/api/batches/{batch_id}/findings/{finding_id}/review", response_model=Finding)
