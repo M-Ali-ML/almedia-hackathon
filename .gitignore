@@ -104,6 +104,9 @@ temp/
 *.tmp
 *.temp
 
+# --- App runtime data ---
+backend/data/
+
 # --- Misc ---
 *.bak
 *.orig

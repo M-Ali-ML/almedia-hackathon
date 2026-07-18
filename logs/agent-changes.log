@@ -15,3 +15,6 @@ Revised the fraud audit MVP plan to include broad mixed-format ingestion, cited 
 
 ## 2026-07-18 16:11 CEST
 Simplified the fraud audit plan back to a thin MVP focused on basic mixed-format ingestion, global context, cited finding rows, and finding-scoped chat, with extensive tests and production hardening deferred.
+## 2026-07-18 16:40 CEST
+Built the end-to-end MVP: backend/ (FastAPI + Pydantic AI auditor agent with read-only SQL tool, GDPdU/CSV/XLSX/DOCX/PDF ingestion into per-batch DuckDB with row-level provenance, AG-UI chat endpoint), frontend/ (Vite React Tailwind SPA with upload, pipeline progress, cited findings table, per-finding chat), plus docs/mvp.md, docs/roadmap.md and a scripted smoke test.
+

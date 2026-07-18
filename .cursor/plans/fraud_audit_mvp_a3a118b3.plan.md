@@ -4,25 +4,25 @@ overview: Build the thinnest end-to-end slice of the audit-fraud agent (upload z
 todos:
   - id: scaffold
     content: Scaffold backend (uv, FastAPI, Pydantic AI, DuckDB) and frontend (Vite React TS, Tailwind, CopilotKit)
-    status: pending
+    status: completed
   - id: contracts
     content: "Define minimal Pydantic contracts: Finding, Citation, GlobalContext, chat messages, and pipeline progress"
-    status: pending
+    status: completed
   - id: ingestion
-    content: "Build basic ingestion for ZIP, GDPdU TXT/XML, CSV, XLSX, DOCX, and PDF into DuckDB with stable document IDs and source row/page/passage references"
-    status: pending
+    content: Build basic ingestion for ZIP, GDPdU TXT/XML, CSV, XLSX, DOCX, and PDF into DuckDB with stable document IDs and source row/page/passage references
+    status: completed
   - id: agent
     content: Implement one general auditor agent with global context, a read-only SQL tool, structured Finding output, and finding-scoped chat
-    status: pending
+    status: completed
   - id: frontend
     content: "Build single-page UI: upload, progress, findings table with visible IDs and citations, and a chat panel for the selected finding"
-    status: pending
+    status: completed
   - id: e2e
     content: Run one end-to-end smoke test on the sample ZIP and confirm a finding and its chat use real source references
-    status: pending
+    status: completed
   - id: docs
     content: Write concise docs/mvp.md and docs/roadmap.md and log the change to logs/agent-changes.log
-    status: pending
+    status: completed
 isProject: false
 ---
 
@@ -45,6 +45,8 @@ flowchart LR
     CTX --> AGENT
     AGENT -->|cited findings and row chat| UI
 ```
+
+
 
 DuckDB is used because it is an embedded analytical database that requires no separate service and is sufficient for the single-user hackathon MVP. Use one database per uploaded batch; production concurrency is out of scope.
 
@@ -87,3 +89,4 @@ Keep it short: architecture diagram, basic data model, API/chat contracts, suppo
 
 - OpenAI is the model provider; load `OPENAI_API_KEY` from the environment.
 - After implementation, append the change entry to `logs/agent-changes.log` per `AGENTS.md`.
+
