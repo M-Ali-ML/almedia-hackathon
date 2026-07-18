@@ -12,23 +12,95 @@ known scheme names, entities, or answer-key content.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from functools import cache
 from typing import Any
 
 import duckdb
 from pydantic import BaseModel
-from pydantic_ai import Agent, ModelRetry, RunContext
+from pydantic_ai import Agent, AgentRunResultEvent, ModelRetry, RunContext
+from pydantic_ai.messages import (
+    FunctionToolCallEvent,
+    FunctionToolResultEvent,
+    PartStartEvent,
+    RetryPromptPart,
+    TextPart,
+    ThinkingPart,
+    ToolCallPart,
+)
+from pydantic_ai.run import AgentRunResult
 from pydantic_ai.ui import StateDeps
 
 from ..ingestion import schema_overview
 from ..models import AnalysisReport, Finding, GlobalContext
 from .. import storage
 
+logger = logging.getLogger(__name__)
+
 MODEL = os.environ.get("AUDITOR_MODEL", "openai:gpt-5.1")
 
 MAX_ROWS = 200
 MAX_CHARS = 40_000
+
+
+def _snip(text: str, limit: int = 200) -> str:
+    text = " ".join(text.split())
+    return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def _log_agent_event(batch_id: str, process: str, event: object) -> None:
+    """Translate pydantic-ai stream events into readable process logs."""
+    if isinstance(event, PartStartEvent):
+        part = event.part
+        if isinstance(part, ThinkingPart):
+            logger.info("[%s] %s → model thinking…", batch_id, process)
+        elif isinstance(part, TextPart):
+            logger.info("[%s] %s → model writing response…", batch_id, process)
+        elif isinstance(part, ToolCallPart):
+            logger.info(
+                "[%s] %s → model requesting tool %s",
+                batch_id,
+                process,
+                part.tool_name,
+            )
+        elif isinstance(part, RetryPromptPart):
+            logger.warning("[%s] %s → model retry prompted", batch_id, process)
+    elif isinstance(event, FunctionToolCallEvent):
+        args = getattr(event.part, "args", None)
+        logger.info(
+            "[%s] %s → calling tool %s(%s)",
+            batch_id,
+            process,
+            event.part.tool_name,
+            _snip(str(args), 120),
+        )
+    elif isinstance(event, FunctionToolResultEvent):
+        tool_name = getattr(event.part, "tool_name", "?")
+        logger.info("[%s] %s → tool %s returned", batch_id, process, tool_name)
+    elif isinstance(event, AgentRunResultEvent):
+        logger.info("[%s] %s → agent run finished", batch_id, process)
+
+
+async def _run_with_progress[AgentDepsT, OutputT](
+    agent: Agent[AgentDepsT, OutputT],
+    prompt: str,
+    *,
+    batch_id: str,
+    process: str,
+    deps: AgentDepsT | None = None,
+) -> AgentRunResult[OutputT]:
+    """Run an agent while streaming progress into the server log."""
+    logger.info("[%s] %s — waiting on LLM (%s)…", batch_id, process, MODEL)
+    result: AgentRunResult[OutputT] | None = None
+    async with agent.run_stream_events(prompt, deps=deps) as events:
+        async for event in events:
+            _log_agent_event(batch_id, process, event)
+            if isinstance(event, AgentRunResultEvent):
+                result = event.result
+    if result is None:
+        raise RuntimeError(f"{process}: agent finished without a result event")
+    return result
 
 
 class AuditState(BaseModel):
@@ -140,11 +212,17 @@ def _register_tools(agent: Agent) -> None:
         Results are capped at 200 rows — use aggregation/LIMIT for large tables.
         Always select `_row_id` when you plan to cite rows as evidence.
         """
+        batch_id = ctx.deps.state.batch_id
+        logger.info("[%s] tool run_sql: %s", batch_id, _snip(query))
         con = _connect(ctx)
         try:
             cursor = con.execute(query)
-            return _rows_to_json(cursor)
+            payload = _rows_to_json(cursor)
+            n_rows = len(json.loads(payload).get("rows", []))
+            logger.info("[%s] tool run_sql → %d rows", batch_id, n_rows)
+            return payload
         except duckdb.Error as exc:
+            logger.warning("[%s] tool run_sql failed: %s", batch_id, exc)
             raise ModelRetry(f"SQL error: {exc}") from exc
         finally:
             con.close()
@@ -155,6 +233,8 @@ def _register_tools(agent: Agent) -> None:
 
         Returns passages with their refs (e.g. 'paragraph 3', 'page 1') for citations.
         """
+        batch_id = ctx.deps.state.batch_id
+        logger.info("[%s] tool read_document: %r", batch_id, file_or_document_id)
         con = _connect(ctx)
         try:
             cursor = con.execute(
@@ -164,13 +244,25 @@ def _register_tools(agent: Agent) -> None:
             )
             rows = cursor.fetchall()
             if not rows:
+                logger.warning(
+                    "[%s] tool read_document: no match for %r",
+                    batch_id,
+                    file_or_document_id,
+                )
                 raise ModelRetry(
                     f"No prose document matching '{file_or_document_id}'. "
                     "Check the documents table for available files."
                 )
             out = [f"{r[0]} {r[1]}" for r in rows[:1]]
             out += [f"[{r[2]}] {r[3]}" for r in rows]
-            return "\n".join(out)[:MAX_CHARS]
+            text = "\n".join(out)[:MAX_CHARS]
+            logger.info(
+                "[%s] tool read_document → %d passages (%d chars)",
+                batch_id,
+                len(rows),
+                len(text),
+            )
+            return text
         finally:
             con.close()
 
@@ -230,7 +322,13 @@ def chat_agent() -> Agent[AuditDeps, str]:
 
 async def run_analysis(batch_id: str) -> list[Finding]:
     deps = StateDeps(AuditState(batch_id=batch_id))
-    result = await analysis_agent().run(ANALYSIS_PROMPT, deps=deps)
+    result = await _run_with_progress(
+        analysis_agent(),
+        ANALYSIS_PROMPT,
+        batch_id=batch_id,
+        process="fraud analysis",
+        deps=deps,
+    )
     findings: list[Finding] = []
     for i, f in enumerate(result.output.findings, start=1):
         findings.append(
@@ -243,6 +341,15 @@ async def run_analysis(batch_id: str) -> list[Finding]:
                 citations=f.citations,
             )
         )
+        logger.info(
+            "[%s] finding %s likelihood=%s amount=%s — %s",
+            batch_id,
+            findings[-1].id,
+            f.likelihood,
+            f.amount_eur,
+            _snip(f.title, 80),
+        )
+    logger.info("[%s] fraud analysis complete — %d findings", batch_id, len(findings))
     return findings
 
 
@@ -266,6 +373,7 @@ def context_agent() -> Agent[None, GlobalContext]:
 
 
 async def build_global_context(batch_id: str) -> GlobalContext:
+    logger.info("[%s] building global context (model=%s)", batch_id, MODEL)
     con = duckdb.connect(str(storage.db_path(batch_id)), read_only=True)
     try:
         texts = con.execute(
@@ -275,14 +383,34 @@ async def build_global_context(batch_id: str) -> GlobalContext:
     finally:
         con.close()
 
+    logger.info(
+        "[%s] context inputs — %d documents, %d prose passages",
+        batch_id,
+        len(docs),
+        len(texts),
+    )
     doc_list = "\n".join(f"- {d[0]}: {d[1]} ({d[2]}{', table ' + d[3] if d[3] else ''})" for d in docs)
     passages = "\n".join(f"[{t[0]} | {t[1]} | {t[2]}] {t[3]}" for t in texts)[:100_000]
     prompt = (
         f"Documents in the dossier:\n{doc_list}\n\n"
         f"Full text of the prose documents:\n{passages or '(none)'}"
     )
-    result = await context_agent().run(prompt)
+    result = await _run_with_progress(
+        context_agent(),
+        prompt,
+        batch_id=batch_id,
+        process="global context",
+    )
     context = result.output
     path = storage.batch_dir(batch_id) / "global_context.json"
     path.write_text(context.model_dump_json(indent=2))
+    by_kind: dict[str, int] = {}
+    for item in context.items:
+        by_kind[item.kind] = by_kind.get(item.kind, 0) + 1
+    logger.info(
+        "[%s] global context saved — %d items (%s)",
+        batch_id,
+        len(context.items),
+        ", ".join(f"{k}={v}" for k, v in sorted(by_kind.items())) or "none",
+    )
     return context

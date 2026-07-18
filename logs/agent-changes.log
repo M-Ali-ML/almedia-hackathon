@@ -18,3 +18,12 @@ Simplified the fraud audit plan back to a thin MVP focused on basic mixed-format
 ## 2026-07-18 16:40 CEST
 Built the end-to-end MVP: backend/ (FastAPI + Pydantic AI auditor agent with read-only SQL tool, GDPdU/CSV/XLSX/DOCX/PDF ingestion into per-batch DuckDB with row-level provenance, AG-UI chat endpoint), frontend/ (Vite React Tailwind SPA with upload, pipeline progress, cited findings table, per-finding chat), plus docs/mvp.md, docs/roadmap.md and a scripted smoke test.
 
+## 2026-07-18 16:40 CEST
+Added INFO-level pipeline logging across main, ingestion, and the auditor agent so stage transitions, file loads, SQL tool calls, and findings appear in the uvicorn terminal.
+
+## 2026-07-18 16:39 CEST
+Added INFO-level pipeline logging across main, ingestion, and the auditor agent so stage transitions, file loads, SQL tool calls, and findings appear in the uvicorn terminal.
+
+## 2026-07-18 16:42 CEST
+Made pipeline process stages log as explicit PROCESS lines and streamed LLM agent events so the terminal shows thinking, tool calls, and which stage is active.
+

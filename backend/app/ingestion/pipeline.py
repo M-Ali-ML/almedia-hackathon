@@ -41,6 +41,7 @@ class IngestResult:
 def ingest_zip(zip_path: Path, work_dir: Path) -> IngestResult:
     """Extract ``zip_path`` into ``work_dir/extracted`` and load everything
     into ``work_dir/dossier.duckdb``."""
+    logger.info("ingest_zip: extracting %s → %s", zip_path.name, work_dir)
     extract_dir = work_dir / "extracted"
     extract_dir.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(zip_path) as zf:
@@ -75,6 +76,7 @@ def ingest_zip(zip_path: Path, work_dir: Path) -> IngestResult:
         and p.name.lower() not in SKIP_NAMES
         and "__macosx" not in str(p).lower()
     )
+    logger.info("ingest_zip: %d files to load", len(files))
 
     # GDPdU index.xml files describe sibling txt tables; collect their schemas
     # first so the txt files are loaded with proper column names.
@@ -94,6 +96,14 @@ def ingest_zip(zip_path: Path, work_dir: Path) -> IngestResult:
         document_id = f"doc-{doc_counter:03d}"
         try:
             infos = _load_file(con, path, rel, document_id, gdpdu_schemas)
+            for info in infos:
+                logger.info(
+                    "  loaded %s → %s kind=%s rows=%s",
+                    document_id,
+                    rel,
+                    info.kind,
+                    info.row_count,
+                )
         except Exception as exc:  # noqa: BLE001
             result.warnings.append(f"failed to ingest {rel}: {exc}")
             logger.exception("ingestion failed for %s", rel)
@@ -106,6 +116,11 @@ def ingest_zip(zip_path: Path, work_dir: Path) -> IngestResult:
             result.documents.append(info)
 
     con.close()
+    logger.info(
+        "ingest_zip complete — %d documents, %d warnings",
+        len(result.documents),
+        len(result.warnings),
+    )
     return result
 
 

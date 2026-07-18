@@ -22,7 +22,12 @@ from .agent import AuditState, build_global_context, chat_agent, run_analysis  #
 from .ingestion import ingest_zip  # noqa: E402
 from .models import BatchResult, BatchStatus, DocumentInfo  # noqa: E402
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    datefmt="%H:%M:%S",
+    force=True,
+)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Fraud Audit Agent (MVP)")
@@ -41,6 +46,9 @@ async def _run_pipeline(batch_id: str) -> None:
         batch_id=batch_id,
         status=BatchStatus(batch_id=batch_id, stage="queued"),
     )
+    logger.info("=" * 60)
+    logger.info("[%s] PIPELINE START", batch_id)
+    logger.info("=" * 60)
     try:
         storage.save_status(batch_id, "extracting")
         storage.save_status(batch_id, "ingesting")
@@ -51,7 +59,8 @@ async def _run_pipeline(batch_id: str) -> None:
         detail = f"{len(ingest.documents)} documents loaded"
         if ingest.warnings:
             detail += f", {len(ingest.warnings)} warnings"
-            logger.warning("ingestion warnings for %s: %s", batch_id, ingest.warnings)
+            logger.warning("[%s] ingestion warnings: %s", batch_id, ingest.warnings)
+
         storage.save_status(batch_id, "building_context", detail)
         storage.save_result(result)
 
@@ -64,8 +73,11 @@ async def _run_pipeline(batch_id: str) -> None:
             batch_id, "done", f"{len(result.findings)} findings"
         )
         storage.save_result(result)
+        logger.info("=" * 60)
+        logger.info("[%s] PIPELINE COMPLETE — %d findings", batch_id, len(result.findings))
+        logger.info("=" * 60)
     except Exception as exc:  # noqa: BLE001 - surface any pipeline failure to the UI
-        logger.exception("pipeline failed for %s", batch_id)
+        logger.exception("[%s] PIPELINE FAILED: %s", batch_id, exc)
         result.status = storage.save_status(batch_id, "error", error=str(exc))
         storage.save_result(result)
 
@@ -77,8 +89,15 @@ async def create_batch(file: UploadFile, background_tasks: BackgroundTasks) -> B
     batch_id = uuid.uuid4().hex[:12]
     work_dir = storage.batch_dir(batch_id)
     work_dir.mkdir(parents=True, exist_ok=True)
-    (work_dir / "upload.zip").write_bytes(await file.read())
+    raw = await file.read()
+    (work_dir / "upload.zip").write_bytes(raw)
     status = storage.save_status(batch_id, "queued")
+    logger.info(
+        "[%s] batch uploaded — file=%r size=%d bytes",
+        batch_id,
+        file.filename,
+        len(raw),
+    )
     background_tasks.add_task(_run_pipeline, batch_id)
     return status
 
@@ -90,6 +109,7 @@ async def get_batch(batch_id: str) -> BatchResult:
         raise HTTPException(status_code=404, detail="Unknown batch")
     result = storage.load_result(batch_id) or BatchResult(batch_id=batch_id, status=status)
     result.status = status
+    logger.debug("[%s] poll stage=%s detail=%s", batch_id, status.stage, status.detail)
     return result
 
 
@@ -104,6 +124,7 @@ async def get_documents(batch_id: str) -> list[DocumentInfo]:
 @app.post("/api/chat")
 async def chat(request: Request):
     """AG-UI endpoint. The client passes {batch_id, finding} as AG-UI state."""
+    logger.info("chat request received")
     return await AGUIAdapter.dispatch_request(
         request, agent=chat_agent(), deps=StateDeps(AuditState())
     )

@@ -11,11 +11,24 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 from .models import BatchResult, BatchStatus, Stage
 
+logger = logging.getLogger(__name__)
+
 BATCHES_DIR = Path(__file__).resolve().parent.parent / "data" / "batches"
+
+STAGE_LABELS: dict[Stage, str] = {
+    "queued": "queued — waiting to start",
+    "extracting": "extracting ZIP",
+    "ingesting": "ingesting files into DuckDB",
+    "building_context": "building global context (LLM)",
+    "analyzing": "running fraud analysis agent (LLM)",
+    "done": "done",
+    "error": "failed",
+}
 
 
 def batch_dir(batch_id: str) -> Path:
@@ -31,6 +44,11 @@ def save_status(batch_id: str, stage: Stage, detail: str | None = None, error: s
     path = batch_dir(batch_id) / "status.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(status.model_dump_json(indent=2))
+    label = STAGE_LABELS.get(stage, stage)
+    extra = f" — {detail}" if detail else ""
+    if error:
+        extra = f" — {error}"
+    logger.info("[%s] PROCESS: %s%s", batch_id, label, extra)
     return status
 
 
