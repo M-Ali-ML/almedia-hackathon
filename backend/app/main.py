@@ -47,7 +47,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="AuditTrace")
+app = FastAPI(title="AudiTrace")
 
 app.add_middleware(
     CORSMiddleware,

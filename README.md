@@ -1,10 +1,10 @@
-# AuditTrace
+# AudiTrace
 
 Hackathon MVP: upload a messy German GDPdU dossier ZIP, get cited fraud findings an auditor can review and chat about.
 
-**AuditTrace** — every claim is backed by the exact row or passage.
+**AudiTrace** — every claim is backed by the exact row or passage.
 
-Built for the Cortea / DataSnipper-style brief — detect planted schemes (fake vendors, capitalized repairs, cut-off errors, threshold splitting), avoid decoys, and keep every claim tied to exact rows/passages.
+Built for the [{Tech: Europe} × Almedia Hackathon | The Summer Lock-In](https://luma.com/berlin-summer-lock-in?tk=WfBvdX) — **won the Cortea track** and placed **2nd overall**. Detect planted schemes (fake vendors, capitalized repairs, cut-off errors, threshold splitting), avoid decoys, and keep every claim tied to exact rows/passages.
 
 ## How it works
 

@@ -89,3 +89,9 @@ Reworked the financial-impact rollup so headline figures cover all non-rejected 
 ## 2026-07-18 18:36 CEST
 Added a hover/focus tooltip to the findings Likelihood chip explaining the corroboration-driven confidence (verified status, corroborating source count, verifier note); made the findings table wrapper overflow-visible so the tooltip isn't clipped.
 
+## 2026-07-19 10:51 CEST
+Renamed the product from AuditTrace to AudiTrace in README, FastAPI title, and frontend page title to match the existing UI branding.
+
+## 2026-07-19 10:52 CEST
+Noted in the README that AudiTrace won the Cortea track and placed 2nd overall at the Tech Europe x Almedia Summer Lock-In hackathon.
+
